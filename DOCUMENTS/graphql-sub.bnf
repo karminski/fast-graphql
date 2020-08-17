@@ -1,0 +1,110 @@
+# graphql.enbf
+# version:    20200629:1
+# author:     karminski <code.karminski@outlook.com>
+
+# This bnf document from https://github.com/tendant/graphql-clj/blob/master/src/graphql.bnf
+#
+# for BNF or EBNF grammar please see
+# http://matt.might.net/articles/grammars-bnf-ebnf/
+
+
+## Document
+Document ::= <Ignored> Definition+ <Ignored>
+Definition ::= TypeSystemDefinition | OperationDefinition | FragmentDefinition
+
+
+## TypeSystemDefinition
+# ...
+
+
+## OperationDefinition
+OperationDefinition ::= <Ignored> OperationType? <Ignored> OperationName? <Ignored> VariableDefinitions? <Ignored> Directives? SelectionSet
+OperationType ::= Query | Mutation | Subscription 
+
+## Query
+Query ::= "query"
+
+## Mutation
+Mutation ::= "mutation"
+# ...
+
+## Name
+Name ::= #"[_A-Za-z][_0-9A-Za-z]*"
+
+## OperationName
+OperationName ::= Name
+
+## Variable
+VariableDefinitions ::= <"("> VariableDefinition+ <")">
+VariableDefinition ::= <Ignored> VariableName <":"> <Ignored> Type <Ignored> DefaultValue? <Ignored>
+
+## VariableName
+VariableName ::= <"$"> Name
+
+## Type
+Type ::= TypeName | ListType | NonNullType
+TypeName ::= Name
+ListType ::= <"["> Type <"]">
+NonNullType ::= TypeName <"!"> | ListType <"!">
+
+## DefaultValue
+DefaultValue ::= <"="> <Ignored> Value
+
+## Value
+Value ::= VariableName | IntValue | FloatValue | ListValue | StringValue | BooleanValue | EnumValue | ObjectValue
+IntValue ::= #"[\+\-0-9]+"
+FloatValue ::= #"[\+\-0-9]+\.[0-9]"
+ListValue ::= <"["> <"]"> | <"["> OneOrMoreValue <"]">
+OneOrMoreValue ::= [Value <Ignored>]+
+StringValue ::= <"\""><"\""> | <"\""> StringCharacter+ <"\"">
+StringCharacter ::= #"[\x{9}\x{20}\x{21}\x{23}-\x{5B}\x{5D}-\uFFFF]" | "\\" "u" EscapedUnicode | "\\" EscapedCharacter
+BooleanValue ::= "true" | "false"
+EnumValue ::= #"(?!(true|false|null))[_A-Za-z][_0-9A-Za-z]*"
+ObjectValue ::= <"{"> ObjectField <"}">
+
+## ObjectField
+ObjectField ::= <Ignored> Name <":"> <Ignored> Value <Ignored>
+
+## Directives
+Directives ::= Directive+
+Directive ::= <"@"> Name Arguments? <Ignored>
+
+## Arguments
+Arguments ::= <"("> <Ignored> Argument+ <")">
+Argument ::= ArgumentName <":"> <Ignored> ArgumentValue <Ignored>*
+ArgumentName ::= Name 
+ArgumentValue ::= Value | VariableName
+
+## SelectionSet & Selection
+SelectionSet ::= <"{"> <Ignored> Selection+ <"}"> <Ignored>
+Selection ::= Field <Ignored> | FragmentSpread <Ignored> | InlineFragment <Ignored>
+
+## Field
+Field ::= Alias? <Ignored> FieldName <Ignored> Arguments? <Ignored> Directives? SelectionSet?
+Alias ::= Name <":">
+FieldName ::= Name
+
+## FragmentSpread
+FragmentSpread ::= <"..."> FragmentName <Ignored> Directives?
+FragmentName ::= Name
+
+## InlineFragment
+InlineFragment ::= <"..."> <Ignored> TypeCondition? Directives? SelectionSet?
+
+## TypeCondition
+TypeCondition ::= <"on"> <Ignored> TypeName <Ignored>
+
+## Ignored
+Ignored ::= Ignore*
+Ignore ::= UnicodeBOM | WhiteSpace | LineTerminator | Comment | Comma
+UnicodeBOM ::= "\uFEFF"
+WhiteSpace ::= #"[\x{9}\x{20}]"   ### ASCII: \t | Space
+LineTerminator ::= #"\x{A}" | #"\x{D}\x{A}" | #"\x{D}"   ### ASCII: \n | \r\n | \r 
+Comment ::= "#" CommentChar* <LineTerminator>
+Comma ::= ","
+CommentChar ::= #"[\x{9}\x{20}-\uFFFF]"
+
+
+
+## FragmentDefinition
+# ...

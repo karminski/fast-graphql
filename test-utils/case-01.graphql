@@ -1,0 +1,75 @@
+# case-01.graphql
+#
+# 
+
+
+
+query q1 {
+    user(id:3){
+        id
+        name
+        email
+    }
+}
+
+
+# lexer phrase
+
+TOKEN_IDENTIFIER TOKEN_IDENTIFIER TOKEN_LEFT_BRACE
+    TOKEN_IDENTIFIER TOKEN_LEFT_PAREN TOKEN_IDENTIFIER TOKEN_COLON TOKEN_NUMBER TOKEN_RIGHT_PAREN TOKEN_LEFT_BRACE
+        TOKEN_IDENTIFIER
+        TOKEN_IDENTIFIER
+        TOKEN_IDENTIFIER
+    TOKEN_RIGHT_BRACE
+TOKEN_RIGHT_BRACE
+
+
+# parser phrase
+
+OperationType OperationName 
+    SelectionSet
+
+## SelectionSet
+
+Selection
+
+## Selection
+
+Field
+
+## Field
+
+FieldName Arguments
+    FieldName
+    FieldName
+    FieldName
+
+## then
+
+Name ArgumentName ArgumentValue
+    Name
+    Name
+    Name
+
+## then
+
+Name Name Value
+    Name
+    Name
+    Name
+
+## then
+
+Name Name IntValue
+    Name
+    Name
+    Name
+
+## finally
+OperationType Name {
+    Name(Name:IntValue){
+        Name
+        Name
+        Name
+    }
+}
