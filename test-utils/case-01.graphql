@@ -66,10 +66,10 @@ Name Name IntValue
     Name
 
 ## finally
-OperationType Name {
-    Name(Name:IntValue){
-        Name
-        Name
-        Name
+OperationType OperationName {
+    FieldName(Name:IntValue){
+        FieldName
+        FieldName
+        FieldName
     }
 }

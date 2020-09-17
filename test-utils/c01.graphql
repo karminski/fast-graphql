@@ -1,0 +1,8 @@
+
+query t1 {
+    user{
+        id
+        name
+        email
+    }
+}

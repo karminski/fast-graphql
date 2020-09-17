@@ -5,5 +5,5 @@ package frontend
 type Document struct {
 	LastLineNum 	  int
 	Definitions       []Definition 
-	ReturnExpressions []Expression
+	// ReturnExpressions []Expression
 }

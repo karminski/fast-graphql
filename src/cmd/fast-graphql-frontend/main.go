@@ -13,7 +13,7 @@ import (
 
 const version = `fast-graphql-frontend 0.0.1`
 const usage = `
-fast-graphql-frontend usage: %s [options] [filename]
+fast-graphql-frontend tester usage: %s [options] [filename]
 Avaliable options are:
     -o name  output to file 'name' (default is "fastgraphqlc.out")
 `
@@ -21,7 +21,7 @@ Avaliable options are:
 func main() {
     // input params
     _v := flag.Bool("v", false, "")
-    _o := flag.String("o", "fastgraphqlc.out", "")
+    // _o := flag.String("o", "fastgraphqlc.out", "")
     flag.Usage = printUsage
     flag.Parse()
 
@@ -36,6 +36,7 @@ func main() {
         fmt.Printf("%v", flag.Args())
         return
     }
+    
     // load target file
     filename := flag.Args()[0]
     data, err := ioutil.ReadFile(filename)
@@ -46,7 +47,7 @@ func main() {
     fileContent := string(data)
 
     // compile
-    fmt.Printf("Now compiling file: %s\n", fileName)
+    fmt.Printf("Now parsing file: %s\n", fileName)
     frontend.Compile(fileContent)
     return
 }

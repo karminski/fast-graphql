@@ -13,9 +13,87 @@ Document ::= <Ignored> Definition+ <Ignored>
 Definition ::= TypeSystemDefinition | OperationDefinition | FragmentDefinition
 
 
-## TypeSystemDefinition
-# ...
+# TypeSystemDefinition Section
 
+## TypeSystemDefinition
+TypeSystemDefinition ::= TypeDefinition | InterfaceDefinition | UnionDefinition | SchemaDefinition | EnumDefinition | InputDefinition | DirectiveDefinition | TypeExtensionDefinition | ScalarDefinition
+
+## TypeDefinition
+TypeDefinition ::= <"type"> <Ignored> TypeName <Ignored> Implements? <Ignored> <"{"> <Ignored> TypeFields <Ignored> <"}"> <Ignored>
+
+## InterfaceDefinition
+InterfaceDefinition ::= <"interface"> <Ignored> TypeName <Ignored> <"{"> <Ignored> TypeFields <Ignored> <"}"> <Ignored>
+
+## UnionDefinition
+UnionDefinition ::= <"union"> <Ignored> TypeName <Ignored> <"="> <Ignored> UnionTypeNames
+
+## SchemaDefinition
+SchemaDefinition ::= <"schema"> <Ignored> <"{"> SchemaTypes <"}"> <Ignored>
+
+## EnumDefinition
+EnumDefinition ::= <"enum"> <Ignored> TypeName <Ignored> <"{"> EnumFields <"}"> <Ignored>
+
+## InputDefinition
+InputDefinition ::= <"input"> <Ignored> TypeName <Ignored> <"{"> <Ignored> InputTypeFields <"}"> <Ignored>
+
+## DirectiveDefinition
+DirectiveDefinition ::= <"directive"> <Ignored> DirectiveName <Ignored> DirectiveOnName <Ignored>
+
+## TypeExtensionDefinition
+TypeExtensionDefinition ::= <"extend"> <Ignored> TypeDefinition
+
+## ScalarDefinition
+ScalarDefinition ::= <"scalar"> <Ignored> TypeName
+
+## TypeFields
+TypeFields ::= TypeField*
+
+## TypeField
+TypeField ::= FieldName TypeFieldArguments? <":"> <Ignored> [TypeFieldType | TypeFieldTypeRequired] <Ignored>
+TypeFieldArguments ::= <"("> TypeFieldArgument+ <")">
+TypeFieldType ::= TypeName | ListTypeName
+TypeFieldTypeRequired ::= TypeFieldType <"!">
+
+## TypeFieldArgument
+TypeFieldArgument ::= ArgumentName <":"> <Ignored> [Type | TypeRequired] <Ignored> TypeFieldArgumentDefault? <Ignored>
+TypeRequired ::= Type <"!">
+TypeFieldArgumentDefault ::= <"="> <Ignored> [StringValue / BooleanValue / IntValue / FloatValue / EnumValue]
+
+## UnionTypeNames
+UnionTypeNames ::= [TypeName <Ignored> | TypeName <Ignored> <"|"> <Ignored>]*
+
+## SchemaTypes
+SchemaTypes ::= SchemaType+
+SchemaType ::= QueryType | MutationType
+
+## QueryType
+QueryType ::= <Ignored> <"query"> <":"> <Ignored> Name <Ignored>
+
+## MutationType
+MutationType ::= <Ignored> <"mutation"> <":"> <Ignored> Name <Ignored>
+
+## EnumFields
+EnumFields ::= EnumField+
+EnumField ::= <Ignored> Name <Ignored> EnumType?
+
+## EnumType
+EnumType ::= <"@enum"> EnumTypeInt EnumIntValue <Ignored>
+EnumTypeInt ::= "Int"
+EnumIntValue ::= <"("> <"value:"> <Ignored> IntValue <")">
+
+## InputTypeFields
+InputTypeFields ::= InputTypeField*
+InputTypeField ::= FieldName <":"> <Ignored> [TypeFieldType | TypeFieldTypeRequired] <Ignored>
+
+## DirectiveName
+DirectiveName ::= <"@">TypeName
+
+## DirectiveOnName
+DirectiveOnName ::= <"on"> <Ignored> TypeName
+
+
+
+# OperationDefinition Section
 
 ## OperationDefinition
 OperationDefinition ::= <Ignored> OperationType? <Ignored> OperationName? <Ignored> VariableDefinitions? <Ignored> Directives? SelectionSet
@@ -34,7 +112,7 @@ Name ::= #"[_A-Za-z][_0-9A-Za-z]*"
 ## OperationName
 OperationName ::= Name
 
-## Variable
+## VariableDefinitions
 VariableDefinitions ::= <"("> VariableDefinition+ <")">
 VariableDefinition ::= <Ignored> VariableName <":"> <Ignored> Type <Ignored> DefaultValue? <Ignored>
 
@@ -106,5 +184,7 @@ CommentChar ::= #"[\x{9}\x{20}-\uFFFF]"
 
 
 
+# FragmentDefinition Section
+
 ## FragmentDefinition
-# ...
+FragmentDefinition ::= <"fragment"> <Ignored> FragmentName <Ignored> TypeCondition Directives? SelectionSet

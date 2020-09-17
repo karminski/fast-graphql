@@ -5,6 +5,8 @@ package frontend
 
 import (
     "strings"
+    "regexp"
+    "fmt"
 )
 
 // token const
@@ -29,7 +31,11 @@ const (
     TOKEN_NUMBER              // number literal
     TOKEN_IDENTIFIER          // identifier
     // Name
+    // TOKEN_NAME                // all name, include OperationName, TypeName, VariableName, ArgumentName etc.
     // Int
+    // TOKEN_INT                 // value int 
+    // TOKEN_FLOAT               // value float
+
     // Float
     // String
     // BlockString
@@ -38,14 +44,70 @@ const (
     TOKEN_QUERY                 // query                
     TOKEN_FRAGMENT              // fragment
     TOKEN_MUTATION              // mutation
+    TOKEN_SUBSCRIPTION          // subscription
+    TOKEN_TYPE                  // type
+    TOKEN_INTERFACE             // interface
+    TOKEN_UNION                 // union
+    TOKEN_SCHEMA                // schema
+    TOKEN_ENUM                  // enum
+    TOKEN_INPUT                 // input
+    TOKEN_DIRECTIVE             // directive
+    TOKEN_EXTEND                // extend
+    TOKEN_SCALAR                // scalar
     TOKEN_TRUE                  // true
     TOKEN_FALSE                 // false
 )
 
+var tokenNameMap = map[int]string{
+    TOKEN_EOF         : "EOF",
+    TOKEN_NOT_NULL      : "!",
+    TOKEN_VAR_PREFIX    : "$",
+    TOKEN_LEFT_PAREN    : "(",
+    TOKEN_RIGHT_PAREN   : ")",    
+    TOKEN_LEFT_BRACKET  : "[",
+    TOKEN_RIGHT_BRACKET : "]",    
+    TOKEN_LEFT_BRACE    : "{",
+    TOKEN_RIGHT_BRACE   : "}",    
+    TOKEN_COLON         : ":",
+    TOKEN_DOTS          : "...",
+    TOKEN_EQUAL         : "=",
+    TOKEN_AT            : "@",
+    TOKEN_AND           : "&",
+    TOKEN_NUMBER    : "number",
+    TOKEN_IDENTIFIER    : "identifier",
+    TOKEN_QUERY        : "query",
+    TOKEN_FRAGMENT     : "fragment",
+    TOKEN_MUTATION     : "mutation",
+    TOKEN_SUBSCRIPTION : "subscription",
+    TOKEN_TYPE         : "type",
+    TOKEN_INTERFACE    : "interface",
+    TOKEN_UNION        : "union",
+    TOKEN_SCHEMA       : "schema",
+    TOKEN_ENUM         : "enum",
+    TOKEN_INPUT        : "input",
+    TOKEN_DIRECTIVE    : "directive",
+    TOKEN_EXTEND       : "extend",
+    TOKEN_SCALAR       : "scalar",
+    TOKEN_TRUE         : "true",
+    TOKEN_FALSE        : "false",
+}
+
 var keywords = map[string]int{
-    "query":    TOKEN_QUERY,
-    "fragment": TOKEN_FRAGMENT,
-    "mutation": TOKEN_MUTATION,
+    "query"        : TOKEN_QUERY,
+    "fragment"     : TOKEN_FRAGMENT,
+    "mutation"     : TOKEN_MUTATION,
+    "subscription" : TOKEN_SUBSCRIPTION,
+    "type"         : TOKEN_TYPE,
+    "interface"    : TOKEN_INTERFACE,
+    "union"        : TOKEN_UNION,
+    "schema"       : TOKEN_SCHEMA,
+    "enum"         : TOKEN_ENUM,
+    "input"        : TOKEN_INPUT,
+    "directive"    : TOKEN_DIRECTIVE,
+    "extend"       : TOKEN_EXTEND,
+    "scalar"       : TOKEN_SCALAR,
+    "true"         : TOKEN_TRUE,
+    "false"        : TOKEN_FALSE,
 }
 
 // regex match patterns
@@ -70,10 +132,20 @@ func (lexer *Lexer) GetLineNum() int {
 }
 
 func (lexer *Lexer) NextTokenIs(tokenType int) (lineNum int, token string) {
-    nowLineNum, nowTokenType, nowToken := lexer.NextToken()
+
+    nowLineNum, nowTokenType, nowToken := lexer.GetNextToken()
+    fmt.Printf("NextTokenIs( '%v' : '%v' == '%v' : '%v' )\n", tokenType, tokenNameMap[tokenType], nowTokenType, tokenNameMap[nowTokenType])
     // syntax error
     if tokenType != nowTokenType {
-        err := fmt.Sprintf("line %d: syntax error near '%s'.", lexer.line, nowToken) 
+        fmt.Println("\n\nOoooooooooops, TOKEN EXCEPT FAILED\n")
+        err := fmt.Sprintf("line %d: syntax error near '%s'.", lexer.GetLineNum(), nowToken) 
+        fmt.Println("- dump lexer --------------")
+        fmt.Printf("document:\n%v\n", lexer.document)
+        fmt.Printf("lineNum:\n%v\n", lexer.lineNum)
+        fmt.Printf("nowToken:\n%v\n", nowToken)
+        fmt.Printf("nextToken:\n%v\n", lexer.nextToken)
+        fmt.Printf("nextTokenType:\n%v\n", lexer.nextTokenType)
+        fmt.Printf("nextTokenLineNum:\n%v\n", lexer.nextTokenLineNum)
         panic(err)
     }
     return nowLineNum, nowToken
@@ -81,16 +153,24 @@ func (lexer *Lexer) NextTokenIs(tokenType int) (lineNum int, token string) {
 
 func (lexer *Lexer) LookAhead() int {
     // lexer.nextToken* already setted
+    // fmt.Printf("\033[36mLookAhead().lexer.nextTokenLineNum: %v\033[0m\n", lexer.nextTokenLineNum)
     if lexer.nextTokenLineNum > 0 {
+    // fmt.Printf("\033[36mLookAhead().lexer.nextTokenType: %v : %v\033[0m\n", lexer.nextTokenType, tokenNameMap[lexer.nextTokenType])
+
         return lexer.nextTokenType
     }
     // set it
     nowLineNum                := lexer.lineNum
-    lineNum, tokenType, token := lexer.NextToken()
+    // fmt.Printf("\033[36mLookAhead().lineNum: %v \033[0m\n", lexer.lineNum)
+
+    lineNum, tokenType, token := lexer.GetNextToken()
+    // fmt.Printf("\033[36mLookAhead().lineNum: %v \033[0m\n", lexer.lineNum)
+    
     lexer.lineNum              = nowLineNum
-    lexer.nextTokenType        = tokenType
     lexer.nextTokenLineNum     = lineNum
+    lexer.nextTokenType        = tokenType
     lexer.nextToken            = token
+    // fmt.Printf("\033[36mLookAhead().tokenType: %v : %v\033[0m\n", tokenType, tokenNameMap[tokenType])
     return tokenType
 }
 
@@ -122,7 +202,7 @@ func (lexer *Lexer) skipWhiteSpace() {
         } else if isNewLine(lexer.document[0]) {
             lexer.skipDocument(1)
             lexer.lineNum += 1
-        } else if matchWhiteSpace(lexer.document[0]) {
+        } else if isWhiteSpace(lexer.document[0]) {
             lexer.skipDocument(1)
         } else {
             break
@@ -136,7 +216,8 @@ func (lexer *Lexer) scan(regexp *regexp.Regexp) string {
         lexer.skipDocument(len(token))
         return token
     }
-    painc("unreachable!")
+    panic("unreachable!")
+    return ""
 }
 
 func (lexer *Lexer) scanNumber() string {
@@ -147,8 +228,8 @@ func (lexer *Lexer) scanIdentifier() string {
     return lexer.scan(regexIdentifier)
 }
 
-// NextToken(), main lexer method
-func (lexer *Lexer) NextToken() (lineNum int, tokenType int, token string) {
+
+func (lexer *Lexer) GetNextToken() (lineNum int, tokenType int, token string) {
     // next token already loaded
     if lexer.nextTokenLineNum > 0 {
         lineNum                = lexer.nextTokenLineNum
@@ -156,13 +237,21 @@ func (lexer *Lexer) NextToken() (lineNum int, tokenType int, token string) {
         token                  = lexer.nextToken
         lexer.lineNum          = lexer.nextTokenLineNum
         lexer.nextTokenLineNum = 0
+        return
     }
+    return lexer.MatchToken()
+
+}
+
+
+func (lexer *Lexer) MatchToken() (lineNum int, tokenType int, token string) {
     // skip spaces
     lexer.skipWhiteSpace()
     // finish
     if len(lexer.document) == 0 {
-        return lexer.lineNum, TOKEN_EOF, "EOF"
+        return lexer.lineNum, TOKEN_EOF, tokenNameMap[TOKEN_EOF]
     }
+    fmt.Printf("now lexer: %c\n", lexer.document[0])
     // check token
     switch lexer.document[0] {
     case '!' :
@@ -219,7 +308,7 @@ func (lexer *Lexer) NextToken() (lineNum int, tokenType int, token string) {
     }
     if lexer.document[0] == '.' || isDigit(lexer.document[0]) {
         token := lexer.scanNumber()
-        return lexer.line, TOKEN_NUMBER, token
+        return lexer.GetLineNum(), TOKEN_NUMBER, token
     }
 
     // unexpected symbol
@@ -229,6 +318,8 @@ func (lexer *Lexer) NextToken() (lineNum int, tokenType int, token string) {
 }
 
 
+
+
 func isDigit(c byte) bool {
     return c >= '0' && c <= '9'
 }
@@ -236,3 +327,4 @@ func isDigit(c byte) bool {
 func isLetter(c byte) bool {
     return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z'
 }
+

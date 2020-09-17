@@ -9,7 +9,8 @@ import (
 
 func Compile(document string) {
 	lexer := NewLexer(document)
-	ast   := parse(lexer)
+	ast   := parseDocument(lexer)
 	lexer.NextTokenIs(TOKEN_EOF) // set EOF
 	fmt.Printf("%f\n", ast)
 }
+
