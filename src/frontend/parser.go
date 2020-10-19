@@ -161,14 +161,10 @@ func parseOperationDefinition(lexer *Lexer) *OperationDefinition {
     fmt.Printf("\033[34mDirectives: %v \033[0m\n", Directives)
 
     SHORT_QUERY_OPERATION:
-    fmt.Printf("-aaaaaaaaaaaaaaaaaaa\n")
         lexer.NextTokenIs(TOKEN_LEFT_BRACE)
-
         SelectionSet    = parseSelectionSet(lexer)
-    fmt.Printf("-bbbbbbbbbbbbbbbbbbb\n")
-    fmt.Printf("\033[34mSelectionSet: %v \033[0m\n", SelectionSet)
-
         lexer.NextTokenIs(TOKEN_RIGHT_BRACE)
+        fmt.Printf("\033[34mSelectionSet: %v \033[0m\n", SelectionSet)
 
     // build OperationDefinition
     return &OperationDefinition{
@@ -432,7 +428,6 @@ func parseSelectionSet(lexer *Lexer) *SelectionSet {
     lineNum := lexer.GetLineNum() 
     // parse variable def until token is "}"
     for lexer.LookAhead() != TOKEN_RIGHT_BRACE {
-        fmt.Println("parseSelection...")
         selections = append(selections, parseSelection(lexer).(Selection))
     }
 
@@ -456,7 +451,6 @@ func parseSelection(lexer *Lexer) interface{} {
  */
 
 func parseField(lexer *Lexer) *Field {
-    fmt.Printf("parseField()...\n")
     var alias *Alias
     var fieldName *FieldName
     var arguments []*Argument
@@ -486,13 +480,9 @@ func parseField(lexer *Lexer) *Field {
     // more SelectionSet
     if lexer.LookAhead() == TOKEN_LEFT_BRACE {
         lexer.NextTokenIs(TOKEN_LEFT_BRACE)
-        fmt.Printf("REENTER parseSelectionSet() ... \n")
         selectionSet = parseSelectionSet(lexer)
         lexer.NextTokenIs(TOKEN_RIGHT_BRACE)
-
     }
-        fmt.Printf("parseField return ... \n")
-
     return &Field{lineNum, alias, fieldName, arguments, directives, selectionSet}
 }
 

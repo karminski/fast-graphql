@@ -1,20 +1,20 @@
 #!/bin/bash
-# build-frontend.sh
+# build.sh
 # build repo.
-# @version    170322:1
+# @version    20200918:1
 # @author     karminski <code.karminski@outlook.com>
 #
 
 # ----------------------------[manual config here]------------------------------
 
-REPO_PATH='..'
+REPO_PATH='/data/repo/jinkanhq/fast-graphql'
 
 
 
 # ------------------------------------------------------------------------------
 
-cd "${REPO_PATH}/src/cmd/fast-graphql-frontend/"
-go build -mod=vendor -o ${REPO_PATH}/bin/fast-graphql-frontend
+cd "${REPO_PATH}/src/cmd/fast-graphql/"
+go build -mod=vendor -o ${REPO_PATH}/bin/fast-graphql
 
 
 

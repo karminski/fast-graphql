@@ -11,9 +11,11 @@ echo "start"
 
 # ----------------------------[manual config here]------------------------------
 
-REPO_PATH='/data/repo/jinkanhq/fast-graphql'
+REPO_PATH='../'
 
 # ----- start
+
+export GOPROXY=https://goproxy.io,direct
 
 cd ${REPO_PATH}
 
