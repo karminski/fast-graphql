@@ -2,7 +2,10 @@
 package backend
 
 import (
-    "reflect"
+    "fast-graphql/src/frontend"
+    "fmt"
+    "errors"
+    "log"
 )
 
 type Request struct {
@@ -25,18 +28,22 @@ func Execute(request Request) (*Result) {
 
     // @todo: THE DOCUMENT NEED VALIDATE!
    
-   
-    
+    // execute
+    fmt.Printf("%v", request)
+    if false {
+        fmt.Printf("%v", AST)
+    }
+    return nil
 }
 
 // types
 
 type Type interface {
-    Name() string
+    GetName() string
 }
 
 type FieldType interface {
-    Name() string
+    GetName() string
 }
 
 // List types
@@ -45,21 +52,20 @@ type List struct {
     Payload Type `json:payload`
 }
 
-func (list *List) Name() string {
+func (list *List) GetName() string {
     return fmt.Sprintf("%v", list.Payload)
 }
 
-func NewList(i Type) (*List, error) {
+func NewList(i Type) *List {
     list := &List{}
 
     if i == nil {
-        var err error
-        err = "NewList() input is nil"
-        return nil, err
+        log.Fatal("NewList() input is nil")
+        return list
     }
 
     list.Payload = i
-    return list, nil
+    return list
 }
 
 // scalar definition
@@ -74,22 +80,26 @@ type Scalar struct {
     Description string `json:description`
 }
 
+func (scalar *Scalar) GetName() string {
+    return scalar.Name
+}
+
+
 func NewScalar(scalarTemplate ScalarTemplate) *Scalar {
     scalar := &Scalar{}
 
     // check scalar template
-    if scalarTemplate.Name == nil {
-        var err error
-        err = "scalarTemplate.Name is not defined"
-        return nil, err
+    if scalarTemplate.Name == "" {
+        err := "scalarTemplate.Name is not defined"
+        log.Fatal(err)
     }
 
-    Scalar.Name        = scalarTemplate.Name
-    Scalar.Description = scalarTemplate.Description
+    scalar.Name        = scalarTemplate.Name
+    scalar.Description = scalarTemplate.Description
 
     // @todo: Scalar should provide serialize, parse value, parse literal function.
     
-    return Scalar
+    return scalar
 }
 
 // scalar types
@@ -117,11 +127,15 @@ type Object struct {
     Fields map[string]*ObjectField
 }
 
+func (object *Object) GetName() string {
+    return object.Name
+}
+
 type ObjectField struct {
     Name            string               `json:name`
     Type            FieldType            `json:type`
     Description     string               `json:description`
-    Arguments       Arguments            `json:arguments`    
+    Arguments       *Arguments            `json:arguments`    
     ResolveFunction FieldResolveFunction `json:"-"`
 }
 
@@ -140,8 +154,7 @@ func NewObject(objectTemplate ObjectTemplate) (*Object, error) {
 
     // check object input
     if objectTemplate.Name == "" {
-        var err error
-        err = "ObjectTemplate.Name is not defined"
+        err := errors.New("ObjectTemplate.Name is not defined")
         return nil, err
     }
     
@@ -169,9 +182,8 @@ func NewSchema(schemaTemplate SchemaTemplate) (Schema, error) {
 
     // check query
     if schemaTemplate.Query == nil {
-        var err error
-        err = "SchemaTemplate.Query is not defined"
-        return nil, err
+        err := errors.New("SchemaTemplate.Query is not defined")
+        return schema, err
     }
 
     // fill schema
