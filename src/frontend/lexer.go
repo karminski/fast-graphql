@@ -73,23 +73,23 @@ var tokenNameMap = map[int]string{
     TOKEN_EQUAL         : "=",
     TOKEN_AT            : "@",
     TOKEN_AND           : "&",
-    TOKEN_NUMBER    : "number",
+    TOKEN_NUMBER        : "number",
     TOKEN_IDENTIFIER    : "identifier",
-    TOKEN_QUERY        : "query",
-    TOKEN_FRAGMENT     : "fragment",
-    TOKEN_MUTATION     : "mutation",
-    TOKEN_SUBSCRIPTION : "subscription",
-    TOKEN_TYPE         : "type",
-    TOKEN_INTERFACE    : "interface",
-    TOKEN_UNION        : "union",
-    TOKEN_SCHEMA       : "schema",
-    TOKEN_ENUM         : "enum",
-    TOKEN_INPUT        : "input",
-    TOKEN_DIRECTIVE    : "directive",
-    TOKEN_EXTEND       : "extend",
-    TOKEN_SCALAR       : "scalar",
-    TOKEN_TRUE         : "true",
-    TOKEN_FALSE        : "false",
+    TOKEN_QUERY         : "query",
+    TOKEN_FRAGMENT      : "fragment",
+    TOKEN_MUTATION      : "mutation",
+    TOKEN_SUBSCRIPTION  : "subscription",
+    TOKEN_TYPE          : "type",
+    TOKEN_INTERFACE     : "interface",
+    TOKEN_UNION         : "union",
+    TOKEN_SCHEMA        : "schema",
+    TOKEN_ENUM          : "enum",
+    TOKEN_INPUT         : "input",
+    TOKEN_DIRECTIVE     : "directive",
+    TOKEN_EXTEND        : "extend",
+    TOKEN_SCALAR        : "scalar",
+    TOKEN_TRUE          : "true",
+    TOKEN_FALSE         : "false",
 }
 
 var keywords = map[string]int{
@@ -134,7 +134,7 @@ func (lexer *Lexer) GetLineNum() int {
 func (lexer *Lexer) NextTokenIs(tokenType int) (lineNum int, token string) {
 
     nowLineNum, nowTokenType, nowToken := lexer.GetNextToken()
-    fmt.Printf("NextTokenIs( '%v' : '%v' == '%v' : '%v' )\n", tokenType, tokenNameMap[tokenType], nowTokenType, tokenNameMap[nowTokenType])
+    fmt.Printf("    lexer.NextTokenIs( expect:'%v'('%v') -> Got:'%v'('%v') )\n", tokenType, tokenNameMap[tokenType], nowTokenType, tokenNameMap[nowTokenType])
     // syntax error
     if tokenType != nowTokenType {
         fmt.Println("\n\nOoooooooooops, TOKEN EXCEPT FAILED\n")

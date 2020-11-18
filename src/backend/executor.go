@@ -6,6 +6,9 @@ import (
     "fmt"
     "errors"
     "log"
+
+    "github.com/davecgh/go-spew/spew"
+
 )
 
 type Request struct {
@@ -24,16 +27,40 @@ type Result struct {
 func Execute(request Request) (*Result) {
 
     // process input
-    AST := frontend.Compile(request.Query)
+    document := frontend.Compile(request.Query)
 
     // @todo: THE DOCUMENT NEED VALIDATE!
    
-    // execute
-    fmt.Printf("%v", request)
+    // dump
+    fmt.Printf("EXECUTE Dump:\n")
+    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+    spewo.Dump(request)
     if false {
-        fmt.Printf("%v", AST)
+        fmt.Printf("%v", document)
     }
+    // execute
+    getDocumentsFields(document)
+
+
     return nil
+}
+
+
+
+func getDocumentsFields(document *frontend.Document) map[string]*frontend.Field {
+    var fields map[string]*frontend.Field
+    fmt.Printf("\n\ngetDocumentsFields Dump:\n")
+    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+    operationDefinition, _ := document.GetOperationDefinition()
+    selections := operationDefinition.SelectionSet.GetSelections()
+    // pickout fields
+    for _, field := range selections {
+        // fields[field.FieldName.Name.Value] = field 
+        spewo.Dump(field)
+        fmt.Printf(field.(*frontend.Field).FieldName.Name.Value)
+    }
+
+    return fields
 }
 
 // types
@@ -175,6 +202,18 @@ type Schema struct {
     Query        *Object
     Mutation     *Object 
     Subscription *Object 
+}
+
+func (schema *Schema) GetQueryObject() *Object {
+    return schema.Query
+}
+
+func (schema *Schema) GetMutationObject() *Object {
+    return schema.Mutation
+}
+
+func (schema *Schema) GetSubscriptionObject() *Object {
+    return schema.Subscription
 }
 
 func NewSchema(schemaTemplate SchemaTemplate) (Schema, error) {

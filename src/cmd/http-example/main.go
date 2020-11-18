@@ -114,8 +114,8 @@ func main() {
     })
     fmt.Printf("START.\n")
 
-    fmt.Println("Server is running on port 8080")
-    http.ListenAndServe("127.0.0.1:8080", nil)
+    fmt.Println("Server is running on port 8081")
+    http.ListenAndServe("127.0.0.1:8081", nil)
 
     fmt.Printf("EXIT. \n")
 }

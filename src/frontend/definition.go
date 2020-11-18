@@ -2,19 +2,37 @@
 
 package frontend
 
-// 
-const (
 
-)
+type Definition interface{
+    GetDefinitionType() string
+}
+
+// Definition should be 
+var _ Definition = (*OperationDefinition)(nil)
+// var _ Definition = (*FragmentDefinition)(nil)
 
 
-type Definition interface{}
+/**
+ * TypeSystemDefinition
+ * TypeSystemDefinition ::= TypeDefinition | InterfaceDefinition | UnionDefinition | SchemaDefinition | EnumDefinition | InputDefinition | DirectiveDefinition | TypeExtensionDefinition | ScalarDefinition
+ */
 
-type EmptyDefinition struct{}
+const TypeSystemDefinitionType = "TypeSystemDefinition"
 
 type TypeSystemDefinition struct {
     LineNum       int 
 }
+
+func (typeSystemDefinition *TypeSystemDefinition) GetDefinitionType() string {
+    return TypeSystemDefinitionType
+}
+
+/**
+ * OperationDefinition
+ * OperationDefinition ::= <Ignored> OperationType? <Ignored> OperationName? <Ignored> VariableDefinitions? <Ignored> Directives? SelectionSet
+ */
+
+const OperationDefinitionType = "OperationDefinition"
 
 type OperationDefinition struct {
     LineNum                int
@@ -25,10 +43,41 @@ type OperationDefinition struct {
     SelectionSet          *SelectionSet
 }
 
+const (
+    OperationTypeQuery        = "query"
+    OperationTypeMutation     = "mutation"
+    OperationTypeSubscription = "subscription"
+)
+
 type OperationType struct {
     LineNum       int 
     OperationName string // anonymous operation if Token is empty.
     Operation     int
+}
+
+func (operationDefinition *OperationDefinition) GetDefinitionType() string {
+    return OperationDefinitionType
+}
+
+func (operationDefinition *OperationDefinition) IsQuery() bool {
+    if operationDefinition.OperationType.Operation == TOKEN_QUERY {
+        return true
+    }
+    return false
+}
+
+func (operationDefinition *OperationDefinition) IsMutation() bool {
+    if operationDefinition.OperationType.Operation == TOKEN_MUTATION {
+        return true
+    }
+    return false
+}
+
+func (operationDefinition *OperationDefinition) IsSubscription() bool {
+    if operationDefinition.OperationType.Operation == TOKEN_SUBSCRIPTION {
+        return true
+    }
+    return false
 }
 
 /**
@@ -118,7 +167,7 @@ type NonNullType struct {
 
 type DefaultValue struct {
     LineNum    int
-    Value      *Value
+    Value      Value
 }
 
 
@@ -138,6 +187,13 @@ type DefaultValue struct {
 
 type Value interface {
 
+}
+
+var _ Value = (*IntValue)(nil)
+
+type IntValue struct {
+    LineNum int
+    Value   int
 }
 
 /**
@@ -184,7 +240,7 @@ type ArgumentName struct {
 
 type ArgumentValue struct {
     LineNum    int 
-    Value      *Value
+    Value      Value
 }
 
 /**
@@ -198,7 +254,13 @@ type SelectionSet struct {
     Selections  []Selection
 }
 
-type Selection interface {}
+func (selectionSet *SelectionSet) GetSelections() []Selection {
+    return selectionSet. Selections
+}
+
+type Selection interface {
+    GetSelectionSet() *SelectionSet
+}
 
 var _ Selection = (*Field)(nil)
 var _ Selection = (*FragmentSpread)(nil)
@@ -221,6 +283,10 @@ type Field struct {
     SelectionSet    *SelectionSet
 }
 
+func (field *Field) GetSelectionSet() *SelectionSet {
+    return field.SelectionSet
+}
+
 type Alias struct {
     LineNum    int 
     Name       *Name
@@ -236,12 +302,25 @@ type FieldName struct {
  * FragmentDefinition ::= <"fragment"> <Ignored> FragmentName <Ignored> TypeCondition Directives? SelectionSet
  */
 
-type FragmentDefinition interface {}
+const FragmentDefinitionType = "FragmentDefinition"
+
+type FragmentDefinition struct {
+    LineNum int
+}
+
+func (fragmentDefinition *FragmentDefinition) GetDefinitionType() string {
+    return FragmentDefinitionType
+}
 
 type FragmentSpread struct {
     LineNum    int
     FragmentName    *FragmentName
     Directives      []*Directive
+}
+
+// FragmentSpread does not have SelectionSet section.
+func (fragmentSpread *FragmentSpread) GetSelectionSet() *SelectionSet {
+    return nil 
 }
 
 type FragmentName struct {
@@ -259,6 +338,10 @@ type InlineFragment struct {
     TypeCondition    *TypeCondition
     Directives       []*Directive
     SelectionSet     *SelectionSet
+}
+
+func (inlineFragment *InlineFragment) GetSelectionSet() *SelectionSet {
+    return inlineFragment.SelectionSet
 }
 
 

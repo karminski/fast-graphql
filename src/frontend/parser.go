@@ -62,10 +62,7 @@ func parseDefinitions(lexer *Lexer) []Definition {
     for !isDocumentEnd(lexer.LookAhead()) {
         definition := parseDefinition(lexer)
         fmt.Printf("- definitions ------\n%v\n", definition)
-        if _, ok := definition.(*EmptyDefinition); !ok {
-            definitions = append(definitions, definition)
-        }
-
+        definitions = append(definitions, definition)
     }   
     return definitions
 }
@@ -161,6 +158,7 @@ func parseOperationDefinition(lexer *Lexer) *OperationDefinition {
     fmt.Printf("\033[34mDirectives: %v \033[0m\n", Directives)
 
     SHORT_QUERY_OPERATION:
+        fmt.Printf("\033[34mParse SHORT_QUERY_OPERATION:  \033[0m\n")
         lexer.NextTokenIs(TOKEN_LEFT_BRACE)
         SelectionSet    = parseSelectionSet(lexer)
         lexer.NextTokenIs(TOKEN_RIGHT_BRACE)
@@ -188,7 +186,7 @@ func parseOperationType(lexer *Lexer) *OperationType {
     case TOKEN_SUBSCRIPTION: // operation "subscription"
         operation = TOKEN_SUBSCRIPTION
     default:
-        return nil
+        operation = TOKEN_QUERY // anonymous operation must be query operation?
     }
     lexer.GetNextToken() // skip after lookAhead
     return &OperationType{lexer.GetLineNum(), tokenNameMap[operation], operation}
@@ -306,13 +304,15 @@ func parseDefaultValue(lexer *Lexer) *DefaultValue {
     ObjectValue ::= <"{"> ObjectField <"}">
  */
 
-func parseValue(lexer *Lexer) *Value {
-    return nil
+func parseValue(lexer *Lexer) IntValue {
+    lexer.NextTokenIs(TOKEN_NUMBER)
+    return IntValue{lexer.GetLineNum(), 1}
     // switch lexer.LookAhead() {
     // case TOKEN_VAR_PREFIX: // VariableName, start with "$"
-    //     return parseVariableName(lexer)
+    //     return nil
+    //     // return parseVariableName(lexer)
     // case TOKEN_NUMBER: // number, include IntValue, FloatValue
-    //     
+    //     parseIntValue(lexer)
     // case TOKEN_IDENTIFIER:
     // 
     // default:
@@ -321,7 +321,7 @@ func parseValue(lexer *Lexer) *Value {
 
 }
 
-// func IntValue(lexer *Lexer) *IntValue {
+// func parseIntValue(lexer *Lexer) *IntValue {
 //     return nil
 // }
 // 
@@ -401,19 +401,30 @@ func parseDirective(lexer *Lexer) *Directive {
  */
 
 func parseArguments(lexer *Lexer) []*Argument {
-    return nil
+    var arguments []*Argument 
+    lexer.NextTokenIs(TOKEN_LEFT_PAREN)
+    for lexer.LookAhead() != TOKEN_RIGHT_PAREN {
+        arguments = append(arguments, parseArgument(lexer))
+    }
+    lexer.NextTokenIs(TOKEN_RIGHT_PAREN)
+    return arguments
 }
 
 func parseArgument(lexer *Lexer) *Argument {
-    return nil
+    argumentName := parseArgumentName(lexer)
+    lexer.NextTokenIs(TOKEN_COLON)
+    argumentValue := parseArgumentValue(lexer)
+    return &Argument{lexer.GetLineNum(), argumentName, argumentValue}
 }
 
 func parseArgumentName(lexer *Lexer) *ArgumentName {
-     return nil
+    name := parseName(lexer)
+    return &ArgumentName{name.LineNum, name}
 }
 
 func parseArgumentValue(lexer *Lexer) *ArgumentValue {
-    return nil
+    value := parseValue(lexer)
+    return &ArgumentValue{value.LineNum, value}
 }
 
 
@@ -470,18 +481,24 @@ func parseField(lexer *Lexer) *Field {
     fmt.Printf("parseField.fieldName{lineNum: %v, name: %v} -> %v\n", fieldName.LineNum, fieldName.Name, fieldName)
 
     // Arguments
-    arguments = parseArguments(lexer)
-    fmt.Printf("\033[34marguments: %v \033[0m\n", arguments)
+    if lexer.LookAhead() == TOKEN_LEFT_PAREN {
+        arguments = parseArguments(lexer)
+        fmt.Printf("\033[34marguments: %v \033[0m\n", arguments)
+    }
 
     // Directives
-    directives = parseDirectives(lexer)
-    fmt.Printf("\033[34mdirectives: %v \033[0m\n", directives)
+    if lexer.LookAhead() == TOKEN_AT {
+        directives = parseDirectives(lexer)
+        fmt.Printf("\033[34mdirectives: %v \033[0m\n", directives)
+    }
 
     // more SelectionSet
     if lexer.LookAhead() == TOKEN_LEFT_BRACE {
+        fmt.Printf("\033[34m into more SelectionSet: \033[0m\n")
         lexer.NextTokenIs(TOKEN_LEFT_BRACE)
         selectionSet = parseSelectionSet(lexer)
         lexer.NextTokenIs(TOKEN_RIGHT_BRACE)
+        fmt.Printf("\033[34m out more SelectionSet: \033[0m\n")
     }
     return &Field{lineNum, alias, fieldName, arguments, directives, selectionSet}
 }
