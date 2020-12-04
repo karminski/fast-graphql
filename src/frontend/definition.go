@@ -255,7 +255,7 @@ type SelectionSet struct {
 }
 
 func (selectionSet *SelectionSet) GetSelections() []Selection {
-    return selectionSet. Selections
+    return selectionSet.Selections
 }
 
 type Selection interface {

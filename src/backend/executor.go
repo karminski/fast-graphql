@@ -11,6 +11,8 @@ import (
 
 )
 
+const DUMP=false
+
 type Request struct {
     // GraphQL Schema config for server side
     Schema Schema 
@@ -24,44 +26,119 @@ type Result struct {
     Error string      `json:"error"`
 }
 
+// get field name string from Field in AST
+func getFieldName(field *frontend.Field) string {
+        return field.FieldName.Name.Value
+}
+
 func Execute(request Request) (*Result) {
+    // debugging
+    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
 
     // process input
     document := frontend.Compile(request.Query)
-
     // @todo: THE DOCUMENT NEED VALIDATE!
-   
-    // dump
-    fmt.Printf("EXECUTE Dump:\n")
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-    spewo.Dump(request)
-    if false {
-        fmt.Printf("%v", document)
+    
+    if DUMP {
+        fmt.Printf("\n")
+        fmt.Printf("\033[33m    [DUMP] Document:  \033[0m\n")
+        spewo.Dump(document)
+        fmt.Printf("\033[33m    [DUMP] Request:  \033[0m\n")
+        spewo.Dump(request)
     }
-    // execute
-    getDocumentsFields(document)
 
+    // get top layer SelectionSet.Fields and request.Schema.ObjectFields
+    operationDefinition, _ := document.GetOperationDefinition()
+    selectionSet := operationDefinition.SelectionSet
+    // selectionSetFields := getSelectionSetFields(selectionSet)
+    objectFields       := request.Schema.GetQueryObjectFields()
+    // execute
+    resolveSelectionSet(selectionSet, objectFields)
 
     return nil
 }
 
 
 
-func getDocumentsFields(document *frontend.Document) map[string]*frontend.Field {
-    var fields map[string]*frontend.Field
-    fmt.Printf("\n\ngetDocumentsFields Dump:\n")
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-    operationDefinition, _ := document.GetOperationDefinition()
-    selections := operationDefinition.SelectionSet.GetSelections()
-    // pickout fields
-    for _, field := range selections {
-        // fields[field.FieldName.Name.Value] = field 
-        spewo.Dump(field)
-        fmt.Printf(field.(*frontend.Field).FieldName.Name.Value)
-    }
 
+// get name mapped Fields from SelectionSet
+func getSelectionSetFields(selectionSet *frontend.SelectionSet) map[string]*frontend.Field {
+    fields := make(map[string]*frontend.Field)
+    selections := selectionSet.GetSelections()
+    for _, selection := range selections {
+        field := selection.(*frontend.Field)
+        fieldName := field.FieldName.Name.Value
+        fields[fieldName] = field
+    }
     return fields
 }
+
+
+func resolveSelectionSet(selectionSet *frontend.SelectionSet, objectFields ObjectFields) {
+    selections        := selectionSet.GetSelections()
+    for _, selection := range selections {
+        // prepare data
+        field := selection.(*frontend.Field)
+        fieldName := getFieldName(field)
+        // resolve Field
+        resolveField(fieldName, field, objectFields)
+    }
+}
+
+
+func getResolvFunction(fieldName string, objectFields ObjectFields) ResolveFunction {
+    resolveFunction := objectFields[fieldName].ResolveFunction
+    // build in type, provide default resolve function
+    if resolveFunction == nil {
+        return nil
+    }
+    return resolveFunction
+}
+
+func resolveField(fieldName string, field *frontend.Field, objectFields ObjectFields) (interface{}, error) {
+    fmt.Printf("\n")
+    fmt.Printf("\033[31m[INTO] func resolveField  \033[0m\n")
+
+    if _, ok := objectFields[fieldName]; !ok {
+        err := "resolveField(): input document field name "+fieldName+" does not defined in schema."
+        return nil, errors.New(err)
+    }
+    
+    resolveFunction := getResolvFunction(fieldName, objectFields)
+    resolvedData, _ := resolveFunction(nil) // @todo: resolveFunction need input query param
+    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+    fmt.Printf("\033[33m    [DUMP] fieldName:  \033[0m\n")
+    spewo.Dump(fieldName)
+    fmt.Printf("\033[33m    [DUMP] field:  \033[0m\n")
+    spewo.Dump(field)
+    fmt.Printf("\033[33m    [DUMP] objectFields[documentFieldName]:  \033[0m\n")
+    spewo.Dump(objectFields[fieldName])
+    fmt.Printf("\033[33m    [DUMP] resolvedData:  \033[0m\n")
+    spewo.Dump(resolvedData)
+
+    // resolv sub-Field
+    finalResult, _ := resolveSubField( , resolvedData)
+    return resolvedData, nil
+}
+
+
+func resolveSubField(selectionSet *frontend.SelectionSet, objectFields ObjectFields, resolvedData interface{}) {
+    // get resolve target type
+    resolvTargetType := objectField.Type 
+    if resolveTargetType, ok := resolvTargetType.(*List); ok {
+        return resolveListData()
+    } 
+
+    if resolveTargetType, ok := resolvTargetType.(*Scalar); ok {
+        return resolveScalarData()
+    }
+
+    if resolveTargetType, ok := resolvTargetType.(*Object); ok {
+        return resolveObjectData()
+    }
+    
+}
+
 
 // types
 
@@ -103,8 +180,9 @@ type ScalarTemplate struct {
 }
 
 type Scalar struct {
-    Name        string `json:name`
-    Description string `json:description`
+    Name            string          `json:name`
+    Description     string          `json:description`
+    ResolveFunction ResolveFunction `json:"-"`
 }
 
 func (scalar *Scalar) GetName() string {
@@ -145,25 +223,29 @@ var String = NewScalar(ScalarTemplate{
 type ObjectFields map[string]*ObjectField
 
 type ObjectTemplate struct {
-    Name string 
-    Fields map[string]*ObjectField
+    Name   string 
+    Fields ObjectFields
 }
 
 type Object struct {
-    Name string
-    Fields map[string]*ObjectField
+    Name   string
+    Fields ObjectFields
 }
 
 func (object *Object) GetName() string {
     return object.Name
 }
 
+func (object *Object) GetFields() ObjectFields {
+    return object.Fields
+} 
+
 type ObjectField struct {
     Name            string               `json:name`
     Type            FieldType            `json:type`
     Description     string               `json:description`
-    Arguments       *Arguments            `json:arguments`    
-    ResolveFunction FieldResolveFunction `json:"-"`
+    Arguments       *Arguments           `json:arguments`    
+    ResolveFunction ResolveFunction      `json:"-"`
 }
 
 type Arguments map[string]*Argument
@@ -173,7 +255,7 @@ type Argument struct {
     Type FieldType `json:type`
 }
 
-type FieldResolveFunction func(i interface{}) (interface{}, error)
+type ResolveFunction func(i interface{}) (interface{}, error)
 
 
 func NewObject(objectTemplate ObjectTemplate) (*Object, error) {
@@ -206,6 +288,10 @@ type Schema struct {
 
 func (schema *Schema) GetQueryObject() *Object {
     return schema.Query
+}
+
+func (schema *Schema) GetQueryObjectFields() ObjectFields {
+    return schema.Query.Fields
 }
 
 func (schema *Schema) GetMutationObject() *Object {
