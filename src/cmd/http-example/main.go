@@ -20,11 +20,11 @@ var users = []User{
         Name: "Bob",
         Email: "bob@email.com",
     },
-    // {
-    //     Id:    2,
-    //     Name: "Alice",
-    //     Email: "Alice@email.com",
-    // },
+    {
+        Id:    2,
+        Name: "Alice",
+        Email: "Alice@email.com",
+    },
     // {
     //     Id:    3,
     //     Name: "Tim",
