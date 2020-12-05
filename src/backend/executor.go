@@ -34,6 +34,7 @@ func getFieldName(field *frontend.Field) string {
 }
 
 func Execute(request Request) (*Result) {
+    finalResult := Result{} 
     // debugging
     spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
 
@@ -56,9 +57,11 @@ func Execute(request Request) (*Result) {
     // selectionSetFields := getSelectionSetFields(selectionSet)
     objectFields       := request.Schema.GetQueryObjectFields()
     // execute
-    resolveSelectionSet(selectionSet, objectFields, nil)
-
-    return nil
+    resolvedResult, _ := resolveSelectionSet(selectionSet, objectFields, nil)
+    fmt.Printf("\033[33m    [DUMP] resolvedResult:  \033[0m\n")
+    spewo.Dump(resolvedResult)
+    finalResult.Data = resolvedResult
+    return &finalResult
 }
 
 
@@ -77,15 +80,18 @@ func getSelectionSetFields(selectionSet *frontend.SelectionSet) map[string]*fron
 }
 
 
-func resolveSelectionSet(selectionSet *frontend.SelectionSet, objectFields ObjectFields, resolvedData interface{}) {
-    selections        := selectionSet.GetSelections()
+func resolveSelectionSet(selectionSet *frontend.SelectionSet, objectFields ObjectFields, resolvedData interface{}) (interface{}, error) {
+    selections  := selectionSet.GetSelections()
+    finalResult := make(map[string]interface{}, len(selections))
     for _, selection := range selections {
         // prepare data
         field := selection.(*frontend.Field)
         fieldName := getFieldName(field)
         // resolve Field
-        resolveField(fieldName, field, objectFields, resolvedData)
+        resolvedResult, _ := resolveField(fieldName, field, objectFields, resolvedData)
+        finalResult[fieldName] = resolvedResult   
     }
+    return finalResult, nil
 }
 
 
@@ -136,52 +142,54 @@ func resolveField(fieldName string, field *frontend.Field, objectFields ObjectFi
     targetObjectField := objectFields[fieldName]
     targetObjectFieldType := objectFields[fieldName].Type
     // go
-    resolveSubField(targetSelectionSet, targetObjectField, targetObjectFieldType, resolvedData)
-    return resolvedData, nil
+    resolvedSubData, _ := resolveSubField(targetSelectionSet, targetObjectField, targetObjectFieldType, resolvedData)
+    return resolvedSubData, nil
 }
 
 
-func resolveSubField(selectionSet *frontend.SelectionSet, objectField *ObjectField, targetType FieldType, resolvedData interface{}) {
+func resolveSubField(selectionSet *frontend.SelectionSet, objectField *ObjectField, targetType FieldType, resolvedData interface{}) (interface{}, error) {
     fmt.Printf("\n")
     fmt.Printf("\033[31m[INTO] func resolveSubField  \033[0m\n")
     // get resolve target type
 
     if _, ok := targetType.(*List); ok {
-        resolveListData(selectionSet, objectField, resolvedData)
+        return resolveListData(selectionSet, objectField, resolvedData)
     } 
 
     if _, ok := targetType.(*Scalar); ok {
-        resolveScalarData(selectionSet, objectField, resolvedData)
+        return resolveScalarData(selectionSet, objectField, resolvedData)
     }
 
     if _, ok := targetType.(*Object); ok {
-        resolveObjectData()
+        return resolveObjectData()
     }
+    return nil, nil
     
 }
 
 func resolveListData(selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
     fmt.Printf("\n")
     fmt.Printf("\033[31m[INTO] func resolveListData  \033[0m\n")
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+    // spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
 
     resolvedDataValue := reflect.ValueOf(resolvedData)
     targetObjectFields := objectField.Type.(*List).Payload.(*Object).Fields
+    // allocate space for list data returns
+    finalResult := make([]interface{}, 0, resolvedDataValue.Len())
     // traverse list
     for i:=0; i<resolvedDataValue.Len(); i++ {
         resolvedDataElement := resolvedDataValue.Index(i).Interface()
-        fmt.Printf("\033[33m    [DUMP] resolvedDataElement:  \033[0m\n")
-        spewo.Dump(resolvedDataElement)
-        fmt.Printf("\033[33m    [DUMP] objectField:  \033[0m\n")
-        spewo.Dump(objectField)
-        fmt.Printf("\033[33m    [DUMP] selectionSet:  \033[0m\n")
-        spewo.Dump(selectionSet)
+        // fmt.Printf("\033[33m    [DUMP] resolvedDataElement:  \033[0m\n")
+        // spewo.Dump(resolvedDataElement)
+        // fmt.Printf("\033[33m    [DUMP] objectField:  \033[0m\n")
+        // spewo.Dump(objectField)
+        // fmt.Printf("\033[33m    [DUMP] selectionSet:  \033[0m\n")
+        // spewo.Dump(selectionSet)
         // execute
-        resolveSelectionSet(selectionSet, targetObjectFields, resolvedDataElement)
-        
+        selectionSetResult, _ := resolveSelectionSet(selectionSet, targetObjectFields, resolvedDataElement)
+        finalResult = append(finalResult, selectionSetResult)
     }
-    return nil, nil
-
+    return finalResult, nil
 }
 
 func resolveScalarData(selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
@@ -204,9 +212,9 @@ func resolveScalarData(selectionSet *frontend.SelectionSet, objectField *ObjectF
     spewo.Dump(r0)
     // convert 
     r1, _ := resolveFunction(r0)
-    fmt.Printf("\033[33m    [DUMP] resolveFunction result:  \033[0m\n")
+    fmt.Printf("\033[43;37m    [DUMP] resolveFunction result:  \033[0m\n")
     spewo.Dump(r1)
-    return nil, nil
+    return r1, nil
 }
 
 func resolveObjectData() (interface{}, error) {
@@ -216,14 +224,9 @@ func resolveObjectData() (interface{}, error) {
 }
 
 func getResolvedDataTargetFieldValue(resolvedData interface{}, targetFieldName string) (interface{}) {
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-
     val := reflect.ValueOf(resolvedData)
-    fmt.Printf("\033[33m    [DUMP] spewo.Dump(val.Type().Field(i).Tag.Get(json)):  \033[0m\n")
     for i := 0; i < val.Type().NumField(); i++ {
-        spewo.Dump(val.Type().Field(i))
         if val.Type().Field(i).Tag.Get("json") == targetFieldName {
-            fmt.Printf("\033[33m    [HIT!] val.Type().Field(i).Tag.Get(json) == targetFieldName  \033[0m\n")
             return reflect.Indirect(val).FieldByName(val.Type().Field(i).Name)
         }
     }
@@ -314,7 +317,7 @@ var String = NewScalar(ScalarTemplate{
     Name: "String",
     Description: "GraphQL String type",
     ResolveFunction: func (i interface{}) (interface{}, error) {
-        return i, nil
+        return i.(reflect.Value).String(), nil
     },
 })
 
