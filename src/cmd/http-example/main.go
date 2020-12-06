@@ -77,8 +77,8 @@ var queryType, _ = backend.NewObject(
                         Type: backend.Int,
                     },
                 },
-                ResolveFunction: func(p interface{}) (interface{}, error) {
-                    id, ok := p.(int)
+                ResolveFunction: func(p backend.ResolveParams) (interface{}, error) {
+                    id, ok := p.Arguments["id"].(int)
                     if ok {
                         // Find user
                         for _, user := range users {
@@ -95,7 +95,7 @@ var queryType, _ = backend.NewObject(
                 Name: "list",
                 Type: backend.NewList(userType),
                 Description: "Get user list",
-                ResolveFunction: func(p interface{}) (interface{}, error) {
+                ResolveFunction: func(p backend.ResolveParams) (interface{}, error) {
                     return users, nil
                 },
             },

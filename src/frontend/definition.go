@@ -186,14 +186,19 @@ type DefaultValue struct {
  */
 
 type Value interface {
-
 }
 
 var _ Value = (*IntValue)(nil)
+var _ Value = (*StringValue)(nil)
 
 type IntValue struct {
     LineNum int
     Value   int
+}
+
+type StringValue struct {
+    LineNum int
+    Value   string
 }
 
 /**
