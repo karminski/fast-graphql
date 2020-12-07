@@ -157,7 +157,6 @@ func resolveField(fieldName string, field *frontend.Field, objectFields ObjectFi
         resolvedData, _ = resolveFunction(p) 
         fmt.Printf("\033[33m    [DUMP] resolvedData:  \033[0m\n")
         spewo.Dump(resolvedData)
-        os.Exit(1)
     }
     fmt.Printf("\033[33m    [DUMP] objectFields[documentFieldName]:  \033[0m\n")
     spewo.Dump(objectFields[fieldName])

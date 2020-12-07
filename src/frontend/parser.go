@@ -8,6 +8,9 @@ import (
     // "strings"
     // "strconv"
     "fmt"
+    // "os"
+    "strconv"
+
 )
 
 
@@ -305,25 +308,32 @@ func parseDefaultValue(lexer *Lexer) *DefaultValue {
  */
 
 func parseValue(lexer *Lexer) IntValue {
-    lexer.NextTokenIs(TOKEN_NUMBER)
-    return IntValue{lexer.GetLineNum(), 1}
-    // switch lexer.LookAhead() {
-    // case TOKEN_VAR_PREFIX: // VariableName, start with "$"
-    //     return nil
-    //     // return parseVariableName(lexer)
-    // case TOKEN_NUMBER: // number, include IntValue, FloatValue
-    //     parseIntValue(lexer)
-    // case TOKEN_IDENTIFIER:
-    // 
-    // default:
-    //     return nil
-    // }
+    intValue := IntValue{}
+    intValue.LineNum = lexer.GetLineNum()
 
+    // lexer.NextTokenIs(TOKEN_NUMBER)
+
+    switch lexer.LookAhead() {
+    case TOKEN_VAR_PREFIX: // VariableName, start with "$"
+        intValue.Value = 0
+        // return parseVariableName(lexer)
+    case TOKEN_NUMBER: // number, include IntValue, FloatValue
+        intValue.Value = parseIntValue(lexer)
+    case TOKEN_IDENTIFIER:
+        intValue.Value = 0
+    default:
+        intValue.Value = 0
+    }
+
+    return intValue
 }
 
-// func parseIntValue(lexer *Lexer) *IntValue {
-//     return nil
-// }
+func parseIntValue(lexer *Lexer) int {
+    _, token := lexer.NextTokenIs(TOKEN_NUMBER)
+    // @todo: does this return need check?
+    i, _ := strconv.Atoi(token)
+    return i
+}
 // 
 // func FloatValue(lexer *Lexer) *FloatValue {
 //     return nil
