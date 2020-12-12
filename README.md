@@ -7,20 +7,22 @@ An extremely fast GraphQL implementation with Go and GOASM.
 Steps
 -----
 
-- 利用 c2goasm, 验证 C -> ASM -> GOASM + go-sourcecode -> bin 的构建流程. [已完成]
-- GraphQL 的 BNF 或 EBNF 定义 [已完成]
-- 编写一个只含有一种 scalar 的 query 的前端
-- 编写与之配套的后端
+- 利用 c2goasm, 验证 C -> ASM -> GOASM + go-sourcecode -> bin 的构建流程 [Check]
+- GraphQL 的 BNF 或 EBNF 定义 [Check]
+- 编写一个只含有一种 scalar 的 query 的前端 [Check]
+- 编写与之配套的后端 [Check]
+- 实现单一类型的 Arguments 请求并输出结果 [Check]
+- 修正分隔符问题 [Check]
+- 修正输入Arguments Feild不存在的错误提示 []
+- 实现所有类型的 Arguments 请求并输出结果 []
+    - int
+    - string
+    - 
+
+- 修正全部 Ignored Definition
+- 完善 errors
 
 
-
-- 调研是否存在 GraphQL 的 C 实现, 如果没有, 则需要自己实现.
-- 实现 C 版本的 GraphQL 最小单元 Parser Demo.
-- 验证 Parser Demo 生成 GOASM 嵌入 Go 并调用测试.
-- 实现 C 版本的 GraphQL.
-- 编写 GraphQL 测试用例.
-- 接入 C 版本的 GraphQL 到 fast-graphql.
-- 测试 fast-graphql.
 
 
 Issues 

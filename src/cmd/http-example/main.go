@@ -25,21 +25,21 @@ var users = []User{
         Name: "Alice",
         Email: "Alice@email.com",
     },
-    // {
-    //     Id:    3,
-    //     Name: "Tim",
-    //     Email: "Tim@email.com",
-    // },
-    // {
-    //     Id:    4,
-    //     Name: "Peter",
-    //     Email: "Peter@email.com",
-    // },
-    // {
-    //     Id:    5,
-    //     Name: "Juice",
-    //     Email: "Juice@email.com",
-    // },
+    {
+        Id:    3,
+        Name: "Tim",
+        Email: "Tim@email.com",
+    },
+    {
+        Id:    4,
+        Name: "Peter",
+        Email: "Peter@email.com",
+    },
+    {
+        Id:    5,
+        Name: "Juice",
+        Email: "Juice@email.com",
+    },
 }
 
 var userType, _ = backend.NewObject(
@@ -72,9 +72,13 @@ var queryType, _ = backend.NewObject(
                 Type: userType,
                 Description: "Get user by id",
                 Arguments: &backend.Arguments{
-                    "id": &backend.Argument{
-                        Name: "id",
-                        Type: backend.Int,
+                    // "id": &backend.Argument{
+                    //     Name: "id",
+                    //     Type: backend.Int,
+                    // },
+                    "name": &backend.Argument{
+                        Name: "name",
+                        Type: backend.String,
                     },
                 },
                 ResolveFunction: func(p backend.ResolveParams) (interface{}, error) {
@@ -83,6 +87,15 @@ var queryType, _ = backend.NewObject(
                         // Find user
                         for _, user := range users {
                             if int(user.Id) == id {
+                                return user, nil
+                            }
+                        }
+                    }
+                    name, ok := p.Arguments["name"].(string)
+                    if ok {
+                        // Find user
+                        for _, user := range users {
+                            if user.Name == name {
                                 return user, nil
                             }
                         }

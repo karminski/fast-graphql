@@ -174,6 +174,7 @@ type DefaultValue struct {
 /**
  * Value Definition
  * Value ::= VariableName | IntValue | FloatValue | ListValue | StringValue | BooleanValue | EnumValue | ObjectValue
+ * VariableName ::=  
  * IntValue ::= #"[\+\-0-9]+"
  * FloatValue ::= #"[\+\-0-9]+\.[0-9]"
  * ListValue ::= <"["> <"]"> | <"["> OneOrMoreValue <"]">
@@ -188,17 +189,53 @@ type DefaultValue struct {
 type Value interface {
 }
 
+var _ Value = (*VariableValue)(nil)
 var _ Value = (*IntValue)(nil)
+var _ Value = (*FloatValue)(nil)
+var _ Value = (*ListValue)(nil)
 var _ Value = (*StringValue)(nil)
+var _ Value = (*BooleanValue)(nil)
+var _ Value = (*EnumValue)(nil)
+var _ Value = (*ObjectValue)(nil)
+
+type VariableValue struct {
+    LineNum int 
+    Name    *Name   
+}
 
 type IntValue struct {
     LineNum int
     Value   int
 }
 
+type FloatValue struct {
+    LineNum int 
+    Value   float64
+}
+
+type ListValue struct {
+    LineNum int 
+    Value   []Value
+}
+
 type StringValue struct {
     LineNum int
     Value   string
+}
+
+type BooleanValue struct {
+    LineNum int 
+    Value   bool
+}
+
+type EnumValue struct {
+    LineNum int 
+    Value   string
+}
+
+type ObjectValue struct {
+    LineNum int 
+    Fields []*ObjectField
 }
 
 /**

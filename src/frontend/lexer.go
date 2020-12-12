@@ -25,6 +25,7 @@ const (
     TOKEN_EQUAL               // =
     TOKEN_AT                  // @
     TOKEN_AND                 // &
+    TOKEN_QUOTE               // "
 
     // literal
 
@@ -59,7 +60,7 @@ const (
 )
 
 var tokenNameMap = map[int]string{
-    TOKEN_EOF         : "EOF",
+    TOKEN_EOF           : "EOF",
     TOKEN_NOT_NULL      : "!",
     TOKEN_VAR_PREFIX    : "$",
     TOKEN_LEFT_PAREN    : "(",
@@ -73,6 +74,7 @@ var tokenNameMap = map[int]string{
     TOKEN_EQUAL         : "=",
     TOKEN_AT            : "@",
     TOKEN_AND           : "&",
+    TOKEN_QUOTE         : "\"",
     TOKEN_NUMBER        : "number",
     TOKEN_IDENTIFIER    : "identifier",
     TOKEN_QUERY         : "query",
@@ -137,7 +139,7 @@ func (lexer *Lexer) NextTokenIs(tokenType int) (lineNum int, token string) {
     fmt.Printf("    lexer.NextTokenIs( expect:'%v'('%v') -> Got:'%v'('%v') )\n", tokenType, tokenNameMap[tokenType], nowTokenType, tokenNameMap[nowTokenType])
     // syntax error
     if tokenType != nowTokenType {
-        fmt.Println("\n\nOoooooooooops, TOKEN EXCEPT FAILED\n")
+        fmt.Println("\n\n\033[05m\033[41;37m                    OOOOOOOOOPS! TOKEN EXCEPT FAILED                    \033[0m\n")
         err := fmt.Sprintf("line %d: syntax error near '%s'.", lexer.GetLineNum(), nowToken) 
         fmt.Println("- dump lexer --------------")
         fmt.Printf("document:\n%v\n", lexer.document)
@@ -194,6 +196,13 @@ func (lexer *Lexer) skipWhiteSpace() {
         }
         return false
     }
+    isComma := func(c byte) bool {
+        switch c {
+        case ',':
+            return true
+        }
+        return false
+    }
     // matching
     for len(lexer.document) > 0 {
         if lexer.nextDocumentIs("\r\n") || lexer.nextDocumentIs("\n\r") {
@@ -203,6 +212,8 @@ func (lexer *Lexer) skipWhiteSpace() {
             lexer.skipDocument(1)
             lexer.lineNum += 1
         } else if isWhiteSpace(lexer.document[0]) {
+            lexer.skipDocument(1)
+        }  else if isComma(lexer.document[0]) {
             lexer.skipDocument(1)
         } else {
             break
@@ -295,6 +306,9 @@ func (lexer *Lexer) MatchToken() (lineNum int, tokenType int, token string) {
     case '&' :
         lexer.skipDocument(1)
         return lexer.lineNum, TOKEN_AND, "&"
+    case '"' :
+        lexer.skipDocument(1)
+        return lexer.lineNum, TOKEN_QUOTE, "\""
     }
 
     // check multiple character token

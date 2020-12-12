@@ -5,7 +5,7 @@ package frontend
 
 import (
     // "regexp"
-    // "strings"
+    "strings"
     // "strconv"
     "fmt"
     // "os"
@@ -307,32 +307,28 @@ func parseDefaultValue(lexer *Lexer) *DefaultValue {
     ObjectValue ::= <"{"> ObjectField <"}">
  */
 
-func parseValue(lexer *Lexer) IntValue {
-    intValue := IntValue{}
-    intValue.LineNum = lexer.GetLineNum()
-
-    // lexer.NextTokenIs(TOKEN_NUMBER)
-
+func parseValue(lexer *Lexer) Value {
+    var value Value
     switch lexer.LookAhead() {
     case TOKEN_VAR_PREFIX: // VariableName, start with "$"
-        intValue.Value = 0
+        return nil
         // return parseVariableName(lexer)
     case TOKEN_NUMBER: // number, include IntValue, FloatValue
-        intValue.Value = parseIntValue(lexer)
+        value = parseIntValue(lexer)
+    case TOKEN_QUOTE: // string
+        value = parseStringValue(lexer)
     case TOKEN_IDENTIFIER:
-        intValue.Value = 0
+        return nil
     default:
-        intValue.Value = 0
+        return nil
     }
-
-    return intValue
+    return value
 }
 
-func parseIntValue(lexer *Lexer) int {
+func parseIntValue(lexer *Lexer) IntValue {
     _, token := lexer.NextTokenIs(TOKEN_NUMBER)
-    // @todo: does this return need check?
     i, _ := strconv.Atoi(token)
-    return i
+    return IntValue{lexer.GetLineNum(), i}
 }
 // 
 // func FloatValue(lexer *Lexer) *FloatValue {
@@ -347,9 +343,22 @@ func parseIntValue(lexer *Lexer) int {
 //     return nil
 // }
 // 
-// func StringValue(lexer *Lexer) *StringValue {
-//     return nil
-// }
+func parseStringValue(lexer *Lexer) StringValue {
+    lexer.NextTokenIs(TOKEN_QUOTE)
+    // in quote, all token except TOKEN_QUOTE are string (TOKEN_IDENTIFIER)
+    var strBuf strings.Builder
+    for ;; {
+        tokenType := lexer.LookAhead()
+        if tokenType != TOKEN_QUOTE {
+            _, token := lexer.NextTokenIs(tokenType)
+            strBuf.WriteString(token)
+        } else {
+            break;
+        }
+    }
+    lexer.NextTokenIs(TOKEN_QUOTE)
+    return StringValue{lexer.GetLineNum(), strBuf.String()}
+}
 // 
 // func StringCharacter(lexer *Lexer) *StringCharacter {
 //     return nil
@@ -434,7 +443,7 @@ func parseArgumentName(lexer *Lexer) *ArgumentName {
 
 func parseArgumentValue(lexer *Lexer) *ArgumentValue {
     value := parseValue(lexer)
-    return &ArgumentValue{value.LineNum, value}
+    return &ArgumentValue{lexer.GetLineNum(), value}
 }
 
 

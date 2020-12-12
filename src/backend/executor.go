@@ -122,6 +122,16 @@ func getArgumentsMap(arguments []*frontend.Argument) map[string]interface{} {
     return argumentsMap
 }
 
+func checkIfInputArgumentsAvaliable(inputArguments map[string]interface{}, targetObjectFieldArguments *Arguments) (bool, error) {
+    for argumentName, _ := range inputArguments {
+        if _, ok := (*targetObjectFieldArguments)[argumentName]; !ok {
+            err := "checkIfInputArgumentsAvaliable(): input argument '"+argumentName+"' does not defined in schema."
+            return false, errors.New(err)
+        }
+    }
+    return true, nil
+}
+
 func resolveField(fieldName string, field *frontend.Field, objectFields ObjectFields, resolvedData interface{}) (interface{}, error) {
     fmt.Printf("\n")
     fmt.Printf("\033[31m[INTO] func resolveField  \033[0m\n")
@@ -153,8 +163,17 @@ func resolveField(fieldName string, field *frontend.Field, objectFields ObjectFi
         // GraphQL Request Arguments are avaliable
         if field.Arguments != nil {
             p.Arguments = getArgumentsMap(field.Arguments)
+            if ok, error := checkIfInputArgumentsAvaliable(p.Arguments, objectFields[fieldName].Arguments); !ok {
+                return nil, error
+            }
         }
+        spewo.Dump(p.Arguments)
         resolvedData, _ = resolveFunction(p) 
+        // resolve failed
+        if resolvedData == nil {
+            err := "resolveField(): input arguments resolved, and no result return."
+            return nil, errors.New(err)
+        }
         fmt.Printf("\033[33m    [DUMP] resolvedData:  \033[0m\n")
         spewo.Dump(resolvedData)
     }
@@ -223,12 +242,12 @@ func resolveScalarData(selectionSet *frontend.SelectionSet, objectField *ObjectF
     fmt.Printf("\033[31m[INTO] func resolveScalarData  \033[0m\n")
     spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
 
-    // fmt.Printf("\033[33m    [DUMP] selectionSet:  \033[0m\n")
-    // spewo.Dump(selectionSet)
-    // fmt.Printf("\033[33m    [DUMP] objectField:  \033[0m\n")
-    // spewo.Dump(objectField)
-    // fmt.Printf("\033[33m    [DUMP] resolvedData:  \033[0m\n")
-    // spewo.Dump(resolvedData)
+    fmt.Printf("\033[33m    [DUMP] selectionSet:  \033[0m\n")
+    spewo.Dump(selectionSet)
+    fmt.Printf("\033[33m    [DUMP] objectField:  \033[0m\n")
+    spewo.Dump(objectField)
+    fmt.Printf("\033[33m    [DUMP] resolvedData:  \033[0m\n")
+    spewo.Dump(resolvedData)
 
     // call resolve function
     resolveFunction := objectField.Type.(*Scalar).ResolveFunction
