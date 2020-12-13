@@ -115,6 +115,10 @@ func getArgumentsMap(arguments []*frontend.Argument) map[string]interface{} {
             argumentsMap[argument.ArgumentName.Name.Value] = val.Value
         } else if val, ok := interfaceValue.(frontend.StringValue); ok {
             argumentsMap[argument.ArgumentName.Name.Value] = val.Value
+        } else if val, ok := interfaceValue.(frontend.FloatValue); ok {
+            argumentsMap[argument.ArgumentName.Name.Value] = val.Value
+        } else if val, ok := interfaceValue.(frontend.BooleanValue); ok {
+            argumentsMap[argument.ArgumentName.Name.Value] = val.Value
         } else {
             argumentsMap[argument.ArgumentName.Name.Value] = nil
         }
@@ -167,6 +171,7 @@ func resolveField(fieldName string, field *frontend.Field, objectFields ObjectFi
                 return nil, error
             }
         }
+        fmt.Printf("\033[33m    [DUMP] p.Arguments:  \033[0m\n")
         spewo.Dump(p.Arguments)
         resolvedData, _ = resolveFunction(p) 
         // resolve failed
@@ -176,6 +181,12 @@ func resolveField(fieldName string, field *frontend.Field, objectFields ObjectFi
         }
         fmt.Printf("\033[33m    [DUMP] resolvedData:  \033[0m\n")
         spewo.Dump(resolvedData)
+        // check resolvedData match input ObjectField.Type
+        if ok, error := resolvedDataTypeChecker(fieldName, resolvedData, objectFields[fieldName].Type); !ok {
+            spewo.Dump(error)
+            os.Exit(1)
+            return ok, error
+        }
     }
     fmt.Printf("\033[33m    [DUMP] objectFields[documentFieldName]:  \033[0m\n")
     spewo.Dump(objectFields[fieldName])
@@ -189,6 +200,43 @@ func resolveField(fieldName string, field *frontend.Field, objectFields ObjectFi
     // go
     resolvedSubData, _ := resolveSubField(targetSelectionSet, targetObjectField, targetObjectFieldType, resolvedData)
     return resolvedSubData, nil
+}
+
+func resolvedDataTypeChecker(fieldName string, resolvedData interface{}, expectedType FieldType) (bool, error) {
+    fmt.Printf("\n")
+    fmt.Printf("\033[31m[INTO] func resolveSubField  \033[0m\n")
+    errorInfo := func(fieldName string, expected string, but string) error {
+        err := "resolveField(): schema defiend ObjectField '"+fieldName+"' Type is '"+expected+"', but ResolveFunction return type is '"+but+"', please check your schema."
+        return errors.New(err)
+    }
+    resolvedDataType := reflect.TypeOf(resolvedData)
+    switch resolvedDataType.Kind() {
+        case reflect.Slice:
+            if _, ok := expectedType.(*List); ok {
+                return true, nil
+            }
+            return false, errorInfo(fieldName, reflect.TypeOf(expectedType).Elem().Name(), "slice, array or map")
+        case reflect.Array:
+            if _, ok := expectedType.(*List); ok {
+                return true, nil
+            }
+            return false, errorInfo(fieldName, reflect.TypeOf(expectedType).Elem().Name(), "slice, array or map")
+        case reflect.Map:
+            if _, ok := expectedType.(*List); ok {
+                return true, nil
+            }
+            return false, errorInfo(fieldName, reflect.TypeOf(expectedType).Elem().Name(), "slice, array or map")
+        case reflect.Struct:
+            if _, ok := expectedType.(*Object); ok {
+                return true, nil
+            }
+            return false, errorInfo(fieldName, reflect.TypeOf(expectedType).Elem().Name(), "struct")
+        default:
+            if _, ok := expectedType.(*Scalar); ok {
+                return true, nil
+            }
+    }
+    return false, errorInfo(fieldName, reflect.TypeOf(expectedType).Elem().Name(), reflect.TypeOf(resolvedData).Elem().Name())
 }
 
 
@@ -284,7 +332,13 @@ func resolveObjectData(selectionSet *frontend.SelectionSet, objectField *ObjectF
 }
 
 func getResolvedDataTargetFieldValue(resolvedData interface{}, targetFieldName string) (interface{}) {
+    fmt.Printf("\033[31m[INTO] func getResolvedDataTargetFieldValue  \033[0m\n")
+    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+
     val := reflect.ValueOf(resolvedData)
+    spewo.Dump(resolvedData)
+    spewo.Dump(val)
+
     for i := 0; i < val.Type().NumField(); i++ {
         if val.Type().Field(i).Tag.Get("json") == targetFieldName {
             return reflect.Indirect(val).FieldByName(val.Type().Field(i).Name)
@@ -381,6 +435,22 @@ var String = NewScalar(ScalarTemplate{
     },
 })
 
+var Bool = NewScalar(ScalarTemplate{
+    Name: "Bool",
+    Description: "GraphQL Bool type",
+    ResolveFunction: func (p ResolveParams) (interface{}, error) {
+        return p.Context.(reflect.Value).Bool(), nil
+    },
+})
+
+var Float = NewScalar(ScalarTemplate{
+    Name: "Float",
+    Description: "GraphQL Float type",
+    ResolveFunction: func (p ResolveParams) (interface{}, error) {
+        return p.Context.(reflect.Value).Float(), nil
+    },
+})
+
 // Object Syntax
 
 type ObjectFields map[string]*ObjectField
@@ -405,7 +475,7 @@ func (object *Object) GetFields() ObjectFields {
 
 type ObjectField struct {
     Name            string               `json:name`
-    Type            FieldType            `json:type`
+    Type            FieldType            `json:type`  // maybe call this returnType?
     Description     string               `json:description`
     Arguments       *Arguments           `json:arguments`    
     ResolveFunction ResolveFunction      `json:"-"`

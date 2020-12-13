@@ -14,10 +14,16 @@ Steps
 - 实现单一类型的 Arguments 请求并输出结果 [Check]
 - 修正分隔符问题 [Check]
 - 修正输入Arguments Feild不存在的错误提示 []
+- ObjectField.Type 需要与 ResolveFunction 得到的 type 相匹配 [check] implement -> resolvedDataTypeChecker
 - 实现所有类型的 Arguments 请求并输出结果 []
-    - int
-    - string
-    - 
+    - variable
+    - int       [check]
+    - string    [check]
+    - float
+    - list
+    - boolean
+    - enum
+    - object
 
 - 修正全部 Ignored Definition
 - 完善 errors

@@ -314,9 +314,13 @@ func parseValue(lexer *Lexer) Value {
         return nil
         // return parseVariableName(lexer)
     case TOKEN_NUMBER: // number, include IntValue, FloatValue
-        value = parseIntValue(lexer)
+        value = parseNumberValue(lexer)
     case TOKEN_QUOTE: // string
         value = parseStringValue(lexer)
+    case TOKEN_TRUE:
+        value = parseBooleanValue(lexer)
+    case TOKEN_FALSE:
+        value = parseBooleanValue(lexer)
     case TOKEN_IDENTIFIER:
         return nil
     default:
@@ -325,13 +329,27 @@ func parseValue(lexer *Lexer) Value {
     return value
 }
 
-func parseIntValue(lexer *Lexer) IntValue {
+func isFloat(token string) bool {
+    i := strings.Index(token, ".")
+    if i < 0 {
+        return false
+    }
+    return true
+}
+
+func parseNumberValue(lexer *Lexer) Value {
     _, token := lexer.NextTokenIs(TOKEN_NUMBER)
-    i, _ := strconv.Atoi(token)
-    return IntValue{lexer.GetLineNum(), i}
+    if isFloat(token) {
+        num, _ := strconv.ParseFloat(token, 64)
+        return FloatValue{lexer.GetLineNum(), num}
+    } else {
+        num, _ := strconv.Atoi(token)
+        return IntValue{lexer.GetLineNum(), num}
+    }
+    return nil
 }
 // 
-// func FloatValue(lexer *Lexer) *FloatValue {
+// func parseFloatValue(lexer *Lexer) *FloatValue {
 //     return nil
 // }
 // 
@@ -364,9 +382,15 @@ func parseStringValue(lexer *Lexer) StringValue {
 //     return nil
 // }
 // 
-// func BooleanValue(lexer *Lexer) *BooleanValue {
-//     return nil
-// }
+func parseBooleanValue(lexer *Lexer) BooleanValue {
+    tokenType := lexer.LookAhead()
+    if tokenType == TOKEN_TRUE {
+        lexer.NextTokenIs(TOKEN_TRUE)
+        return BooleanValue{lexer.GetLineNum(), true}
+    }
+    lexer.NextTokenIs(TOKEN_FALSE)
+    return BooleanValue{lexer.GetLineNum(), false}
+}
 // 
 // func EnumValue(lexer *Lexer) *EnumValue {
 //     return nil
