@@ -15,13 +15,35 @@ Steps
 - 修正分隔符问题 [Check]
 - 修正输入Arguments Feild不存在的错误提示 []
 - ObjectField.Type 需要与 ResolveFunction 得到的 type 相匹配 [check] implement -> resolvedDataTypeChecker
+- variable 的实现
+    - [未定义行为] variable 未传入报错
+    - 传入 variable
+        - int       [check]
+        - string    [check]
+        - float     [check]
+        - list      []
+        - boolean   [check]
+        - enum      []
+        - object    []
+    - 从用户输入获取 variable
+    - DecodeVariables 函数使用了 json.Unmarshal, 执行完毕后默认数字类型是float64, 如果需要 int 需要手动转换. [Reference: pkg/encoding/json/#Unmarshal](https://golang.org/pkg/encoding/json/#Unmarshal)
+    ```
+    To unmarshal JSON into an interface value, Unmarshal stores one of these in the interface value:
+    
+    bool, for JSON booleans
+    float64, for JSON numbers
+    string, for JSON strings
+    []interface{}, for JSON arrays
+    map[string]interface{}, for JSON objects
+    nil for JSON null
+    ```
 - 实现所有类型的 Arguments 请求并输出结果 []
-    - variable
+    - variable  [check]
     - int       [check]
     - string    [check]
-    - float
-    - list
-    - boolean
+    - float     [check]
+    - list      
+    - boolean   [check]
     - enum
     - object
 
@@ -38,6 +60,7 @@ Issues
 - 查询是如何在目标的数据结构上进行查找的?
     - 每个数据结构会被```graphql.NewObject```实例化为专用结构, 并提供```Resolve```方法进行查询. ```Resolve```方法需要自己构造.
 - AST如何作用查询的?
+- variable 为什么没有纳入 GraphQL Schema? 现有实现(graphql-go, graphql-js) 都是通过参数传递进去的.
 
 Thoughts
 --------

@@ -136,7 +136,7 @@ func (lexer *Lexer) GetLineNum() int {
 func (lexer *Lexer) NextTokenIs(tokenType int) (lineNum int, token string) {
 
     nowLineNum, nowTokenType, nowToken := lexer.GetNextToken()
-    fmt.Printf("    lexer.NextTokenIs( expect:'%v'('%v') -> Got:'%v'('%v') )\n", tokenType, tokenNameMap[tokenType], nowTokenType, tokenNameMap[nowTokenType])
+    fmt.Printf("    lexer.NextTokenIs( expect:'%v'==>'%v' -> Got:'%v'==>'%v' )\n", tokenType, tokenNameMap[tokenType], nowTokenType, tokenNameMap[nowTokenType])
     // syntax error
     if tokenType != nowTokenType {
         fmt.Println("\n\n\033[05m\033[41;37m                    OOOOOOOOOPS! TOKEN EXCEPT FAILED                    \033[0m\n")

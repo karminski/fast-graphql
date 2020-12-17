@@ -200,7 +200,7 @@ var _ Value = (*ObjectValue)(nil)
 
 type VariableValue struct {
     LineNum int 
-    Name    *Name   
+    Value   string   
 }
 
 type IntValue struct {

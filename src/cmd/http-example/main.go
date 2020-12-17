@@ -6,6 +6,8 @@ import (
     "net/http"
 
     "fast-graphql/src/backend"
+    "github.com/davecgh/go-spew/spew"
+
 )
 
 type User struct {
@@ -110,15 +112,20 @@ var queryType, _ = backend.NewObject(
                     },
                 },
                 ResolveFunction: func(p backend.ResolveParams) (interface{}, error) {
+    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+
                     fmt.Printf("\033[33m    [INTO] user defined ResolveFunction:  \033[0m\n")
 
-                    id, ok := p.Arguments["id"].(int)
+                    id, ok := p.Arguments["id"].(float64)
+                    spewo.Dump(id)
+
                     if ok {
+                        intId := int(id)
                         fmt.Printf("\033[33m    [INTO] id:  \033[0m\n")
 
                         // Find user
                         for _, user := range users {
-                            if int(user.Id) == id {
+                            if int(user.Id) == intId {
                                 return user, nil
                             }
                         }
@@ -137,15 +144,12 @@ var queryType, _ = backend.NewObject(
                     married, ok := p.Arguments["married"].(bool)
                     if ok {
                         fmt.Printf("\033[33m    [INTO] married:  \033[0m\n")
-
                         // Find user
-                        targetUsers := make([]User, 0)
                         for _, user := range users {
                             if bool(user.Married) == married {
-                                targetUsers = append(targetUsers, user)
+                                return user, nil
                             }
                         }
-                        return targetUsers, nil
                     }
                     height, ok := p.Arguments["height"].(float64)
                     if ok {
@@ -182,10 +186,22 @@ var schema, _ = backend.NewSchema(
 )
 
 
-func executeQuery(query string, schema backend.Schema) *backend.Result {
-    result := backend.Execute(backend.Request{
+func executeQuery(query string, variables string, schema backend.Schema) *backend.Result {
+
+    var result *backend.Result 
+    var decodedVariables map[string]interface{}
+    // unmarshal variables
+    decodedVariables, err := backend.DecodeVariables(variables)
+    if err != nil {
+        result.Error = err
+        return result
+    }
+
+    // execute
+    result = backend.Execute(backend.Request{
         Schema: schema,
         Query:  query,
+        Variables: decodedVariables,
     })
     // if len(result.Errors) > 0 {
     //     fmt.Printf("errors: %v", result.Errors)
@@ -195,7 +211,10 @@ func executeQuery(query string, schema backend.Schema) *backend.Result {
 
 func main() {
     http.HandleFunc("/product", func(w http.ResponseWriter, r *http.Request) {
-        result := executeQuery(r.URL.Query().Get("query"), schema)
+        query     := r.URL.Query().Get("query")
+        variables := r.URL.Query().Get("variables")
+        // execute
+        result    := executeQuery(query, variables, schema)
         json.NewEncoder(w).Encode(result)
     })
     fmt.Printf("START.\n")
