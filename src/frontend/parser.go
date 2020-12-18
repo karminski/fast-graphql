@@ -77,6 +77,14 @@ func parseDefinition(lexer *Lexer) Definition {
     // parse OperationType and OperationName
     switch lexer.LookAhead() {
     // type system definitation
+    case TOKEN_QUOTE:
+        return parseTypeSystemDefinition(lexer)
+    case TOKEN_DUOQUOTE:
+        return parseTypeSystemDefinition(lexer)
+    case TOKEN_TRIQUOTE:
+        return parseTypeSystemDefinition(lexer)
+    case TOKEN_HEXQUOTE:
+        return parseTypeSystemDefinition(lexer)
     case TOKEN_IDENTIFIER:
         return parseTypeSystemDefinition(lexer)
     case TOKEN_TYPE:
@@ -116,7 +124,89 @@ func parseDefinition(lexer *Lexer) Definition {
 }
 
 func parseTypeSystemDefinition(lexer *Lexer) *TypeSystemDefinition {
-    return nil
+    nextToken := lexer.LookAhead()
+    var description string 
+    var err error
+    // parse description
+    if nextToken == TOKEN_QUOTE || nextToken == TOKEN_DUOQUOTE ||  nextToken == TOKEN_TRIQUOTE || nextToken == TOKEN_HEXQUOTE {
+        description, err = parseDescription(lexer)
+    }
+    // type definition body
+    switch lexer.LookAhead() {
+    case TOKEN_QUOTE:
+        return parseTypeSystemDefinition(lexer)
+    case TOKEN_DUOQUOTE:
+        return parseTypeSystemDefinition(lexer)
+    case TOKEN_TRIQUOTE:
+        return parseTypeSystemDefinition(lexer)
+    case TOKEN_HEXQUOTE:
+        return parseTypeSystemDefinition(lexer)
+    case TOKEN_IDENTIFIER:
+        return parseTypeSystemDefinition(lexer)
+    case TOKEN_TYPE:
+        return parseTypeSystemDefinition(lexer)
+    case TOKEN_INTERFACE:
+        return parseTypeSystemDefinition(lexer)
+    case TOKEN_UNION:
+        return parseTypeSystemDefinition(lexer)
+    case TOKEN_SCHEMA:
+        return parseTypeSystemDefinition(lexer)
+    case TOKEN_ENUM:
+        return parseTypeSystemDefinition(lexer)
+    case TOKEN_INPUT:
+        return parseTypeSystemDefinition(lexer)
+    case TOKEN_DIRECTIVE:
+        return parseTypeSystemDefinition(lexer)
+    case TOKEN_EXTEND:
+        return parseTypeSystemDefinition(lexer)
+    case TOKEN_SCALAR:
+        return parseTypeSystemDefinition(lexer)
+    default:
+        return nil
+    }
+}
+
+/**
+ * parseDescription
+ * @Reference: http://spec.graphql.org/draft/#StringValue
+ * Description:
+ *     StringValue
+ */
+func parseDescription(lexer *Lexer) (string, error) {
+    return parseStringValue(lexer)
+}
+
+/**
+ * parseStringValue
+ * @Reference: http://spec.graphql.org/draft/#StringValue
+ * StringValue
+ *     ""
+ *     "StringCharacterlist"
+ *     """BlockStringCharacterlistopt"""
+ */
+func parseStringValue(lexer *Lexer) (string, error) {
+    if lexer.LookAhead() == TOKEN_HEXQUOTE {
+        lexer.NextTokenIs(TOKEN_HEXQUOTE)
+        return "", nil
+    }
+    if lexer.LookAhead() == TOKEN_DUOQUOTE {
+        lexer.NextTokenIs(TOKEN_DUOQUOTE)
+        return "", nil
+    }
+    if lexer.LookAhead() == TOKEN_TRIQUOTE {
+        lexer.NextTokenIs(TOKEN_TRIQUOTE)
+        str := lexer.scanBeforeToken(TOKEN_QUADQUOTE)
+        lexer.NextTokenIs(TOKEN_TRIQUOTE)
+        return str, nil
+    }
+    if lexer.LookAhead() == TOKEN_QUOTE {
+        lexer.NextTokenIs(TOKEN_QUOTE)
+        str := lexer.scanBeforeToken(TOKEN_QUOTE)
+        lexer.NextTokenIs(TOKEN_QUOTE)
+        return str, nil
+    }
+    err := "not a StringValue"
+    return "", errors.New(err)
 }
 
 // parseTypeSystemDefinition
@@ -124,7 +214,44 @@ func parseTypeSystemDefinition(lexer *Lexer) *TypeSystemDefinition {
 // parseInterfaceTypeDefinition
 // parseUnionTypeDefinition
 // parseSchemaDefinition
-// parseEnumTypeDefinition
+
+/**
+ * EnumTypeDefinition
+ * EnumDefinition ::= Description? <"enum"> <Ignored> TypeName <Ignored> Directives? <Ignored> <"{"> EnumValuesDefinition <"}"> <Ignored>
+ * EnumValuesDefinition ::= EnumValueDefinition+
+ * EnumValueDefinition ::= Description? <Ignored> EnumValue <Ignored> Directives? 
+ * EnumValue ::= Name
+ */
+func parseEnumTypeDefinition(lexer *Lexer, description string) (*EnumTypeDefinition, error) {
+    fmt.Printf("\n")
+    fmt.Printf("\033[31m[INTO] func parseEnumTypeDefinition  \033[0m\n")
+
+    var enumTypeDefinition EnumTypeDefinition
+    // start
+    lexer.NextTokenIs(TOKEN_ENUM)
+    _, enumTypeDefinition.Name := lexer.NextTokenIs(TOKEN_IDENTIFIER)
+    if enumTypeDefinition.Directives, err := parseDirectives(lexer); err != nil {
+        return nil, err
+    }
+    lexer.NextTokenIs(TOKEN_LEFT_BRACE)
+    // enum fields
+    switch lexer.LookAhead() {
+    case TOKEN_RIGHT_BRACE:
+        break
+    case TOKEN_IDENTIFIER: 
+        _, name := lexer.NextTokenIs(TOKEN_IDENTIFIER)
+    default:
+        return parseField(lexer)
+    }
+
+    lexer.NextTokenIs(TOKEN_RIGHT_BRACE)
+    return &enumTypeDefinition
+}
+
+func parseEnumValueDefinition(lexer *Lexer) *EnumValueDefinition {
+
+}
+
 // parseInputObjectTypeDefinition
 // parseDirectiveDefinition
 // parseTypeExtensionDefinition

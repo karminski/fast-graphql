@@ -25,7 +25,10 @@ const (
     TOKEN_EQUAL               // =
     TOKEN_AT                  // @
     TOKEN_AND                 // &
-    TOKEN_QUOTE               // "
+	TOKEN_QUOTE         	  // "
+	TOKEN_DUOQUOTE 			  // ""
+	TOKEN_TRIQUOTE      	  // """
+	TOKEN_HEXQUOTE 			  // """"""
 
     // literal
 
@@ -74,7 +77,10 @@ var tokenNameMap = map[int]string{
     TOKEN_EQUAL         : "=",
     TOKEN_AT            : "@",
     TOKEN_AND           : "&",
-    TOKEN_QUOTE         : "\"",
+	TOKEN_QUOTE         : "\"",
+	TOKEN_DUOQUOTE 		: "\"\"",
+	TOKEN_TRIQUOTE      : "\"\"\"",
+	TOKEN_HEXQUOTE 		: "\"\"\"\"\"\"",
     TOKEN_NUMBER        : "number",
     TOKEN_IDENTIFIER    : "identifier",
     TOKEN_QUERY         : "query",
@@ -231,6 +237,17 @@ func (lexer *Lexer) scan(regexp *regexp.Regexp) string {
     return ""
 }
 
+// return content before token
+func (lexer *Lexer) scanBeforeToken(token string) string {
+    s = strings.Split(lexer.document, token)
+    if len(s) < 2 {
+        panic("unreachable!")
+        return ""
+    }
+    lexer.skipDocument(len(s[0]))
+    return s[0]
+}
+
 func (lexer *Lexer) scanNumber() string {
     return lexer.scan(regexNumber)
 }
@@ -307,6 +324,18 @@ func (lexer *Lexer) MatchToken() (lineNum int, tokenType int, token string) {
         lexer.skipDocument(1)
         return lexer.lineNum, TOKEN_AND, "&"
     case '"' :
+        if lexer.nextDocumentIs("\"\"\"\"\"\"") {
+            lexer.skipDocument(6)
+            return lexer.lineNum, TOKEN_HEXQUOTE, "\"\"\"\"\"\""
+        }
+        if lexer.nextDocumentIs("\"\"\"") {
+            lexer.skipDocument(3)
+            return lexer.lineNum, TOKEN_TRIQUOTE, "\"\"\""
+        }
+        if lexer.nextDocumentIs("\"\"") {
+            lexer.skipDocument(2)
+            return lexer.lineNum, TOKEN_DUOQUOTE, "\"\""
+        }
         lexer.skipDocument(1)
         return lexer.lineNum, TOKEN_QUOTE, "\""
     }

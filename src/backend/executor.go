@@ -49,7 +49,7 @@ func DecodeVariables(inputVariables string) (map[string]interface{}, error) {
 
 // get field name string from Field in AST
 func getFieldName(field *frontend.Field) string {
-        return field.FieldName.Name.Value
+    return field.FieldName.Name.Value
 }
 
 func Execute(request Request) (*Result) {

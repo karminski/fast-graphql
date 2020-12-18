@@ -19,13 +19,35 @@ var _ Definition = (*OperationDefinition)(nil)
 
 const TypeSystemDefinitionType = "TypeSystemDefinition"
 
-type TypeSystemDefinition struct {
-    LineNum       int 
-}
+type TypeSystemDefinition interface{}
 
 func (typeSystemDefinition *TypeSystemDefinition) GetDefinitionType() string {
     return TypeSystemDefinitionType
 }
+
+
+/**
+ * EnumTypeDefinition
+ * EnumDefinition ::= Description? <"enum"> <Ignored> TypeName <Ignored> Directives? <Ignored> <"{"> EnumValuesDefinition <"}"> <Ignored>
+ * EnumValuesDefinition ::= EnumValueDefinition+
+ * EnumValueDefinition ::= Description? <Ignored> EnumValue <Ignored> Directives? 
+ * EnumValue ::= Name
+ */
+type EnumTypeDefinition struct {
+    LineNum        int 
+    Name          *Name
+    Description    string
+    Directives  []*Directive
+    Values      []*EnumValueDefinition
+}
+
+type EnumValueDefinition struct {
+    LineNum        int
+    Description    string 
+    Value         *Name
+    Directives  []*Directive
+}
+
 
 /**
  * OperationDefinition

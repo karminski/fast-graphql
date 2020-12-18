@@ -83,7 +83,7 @@ Improvements
 
 Reference
 ---------
-
+- [GraphQL Specification](http://spec.graphql.org/)
 - [c2goasm 简单教程](./DOCUMENTS/c2goasm-usage.md)
 - [GraphQL BNF](./DOCUMENTS/graphql.bnf)
 - [GraphQL Specification](https://github.com/graphql/graphql-spec)

@@ -7,6 +7,7 @@
 # for BNF or EBNF grammar please see
 # http://matt.might.net/articles/grammars-bnf-ebnf/
 
+? -> 0或1个
 
 ## Document
 Document ::= <Ignored> Definition+ <Ignored>
@@ -16,7 +17,7 @@ Definition ::= TypeSystemDefinition | OperationDefinition | FragmentDefinition
 # TypeSystemDefinition Section
 
 ## TypeSystemDefinition
-TypeSystemDefinition ::= TypeDefinition | InterfaceDefinition | UnionDefinition | SchemaDefinition | EnumDefinition | InputDefinition | DirectiveDefinition | TypeExtensionDefinition | ScalarDefinition
+TypeSystemDefinition ::= TypeDefinition | InterfaceDefinition | UnionDefinition | SchemaDefinition | EnumTypeDefinition | InputDefinition | DirectiveDefinition | TypeExtensionDefinition | ScalarDefinition
 
 ## TypeDefinition
 TypeDefinition ::= <"type"> <Ignored> TypeName <Ignored> Implements? <Ignored> <"{"> <Ignored> TypeFields <Ignored> <"}"> <Ignored>
@@ -30,8 +31,8 @@ UnionDefinition ::= <"union"> <Ignored> TypeName <Ignored> <"="> <Ignored> Union
 ## SchemaDefinition
 SchemaDefinition ::= <"schema"> <Ignored> <"{"> SchemaTypes <"}"> <Ignored>
 
-## EnumDefinition
-EnumDefinition ::= <"enum"> <Ignored> TypeName <Ignored> <"{"> EnumFields <"}"> <Ignored>
+## EnumTypeDefinition
+EnumDefinition ::= Description? <"enum"> <Ignored> TypeName <Ignored> Directives? <Ignored> <"{"> EnumValuesDefinition <"}"> <Ignored>
 
 ## InputDefinition
 InputDefinition ::= <"input"> <Ignored> TypeName <Ignored> <"{"> <Ignored> InputTypeFields <"}"> <Ignored>
@@ -72,14 +73,19 @@ QueryType ::= <Ignored> <"query"> <":"> <Ignored> Name <Ignored>
 ## MutationType
 MutationType ::= <Ignored> <"mutation"> <":"> <Ignored> Name <Ignored>
 
-## EnumFields
-EnumFields ::= EnumField+
-EnumField ::= <Ignored> Name <Ignored> EnumType?
+## EnumValuesDefinition
+EnumValuesDefinition ::= EnumValueDefinition+
+EnumValueDefinition ::= Description? <Ignored> EnumValue <Ignored> Directives?
+EnumValue ::= Name
+
+
+# // EnumFields ::= EnumField+
+# // EnumField ::= <Ignored> Name <Ignored> EnumType?
 
 ## EnumType
-EnumType ::= <"@enum"> EnumTypeInt EnumIntValue <Ignored>
-EnumTypeInt ::= "Int"
-EnumIntValue ::= <"("> <"value:"> <Ignored> IntValue <")">
+# // EnumType ::= <"@enum"> EnumTypeInt EnumIntValue <Ignored>
+# // EnumTypeInt ::= "Int"
+# // EnumIntValue ::= <"("> <"value:"> <Ignored> IntValue <")">
 
 ## InputTypeFields
 InputTypeFields ::= InputTypeField*
@@ -91,6 +97,12 @@ DirectiveName ::= <"@">TypeName
 ## DirectiveOnName
 DirectiveOnName ::= <"on"> <Ignored> TypeName
 
+
+## Description
+
+
+## StringValue
+StringValue ::= <"\"\"\""><"\"\"\""> | <"\""><"\""> | |
 
 
 # OperationDefinition Section
