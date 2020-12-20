@@ -99,10 +99,10 @@ DirectiveOnName ::= <"on"> <Ignored> TypeName
 
 
 ## Description
-
+Description ::= StringValue
 
 ## StringValue
-StringValue ::= <"\"\"\""><"\"\"\""> | <"\""><"\""> | |
+StringValue ::= <"\"\"\""><"\"\"\""> | <"\""><"\""> | <"\"">StringCharacter<"\""> | <"\"\"\"">BlockStringCharacter<"\"\"\""> |
 
 
 # OperationDefinition Section
