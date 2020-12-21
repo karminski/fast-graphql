@@ -652,10 +652,14 @@ func parseDirectives(lexer *Lexer) ([]*Directive, error) {
 
 func parseDirective(lexer *Lexer) *Directive {
     fmt.Printf("\033[31m[INTO] func parseDirective  \033[0m\n")
-
-    name      := parseName(lexer)
-    arguments := parseArguments(lexer)
-    return &Directive{lexer.GetLineNum(), name, arguments}
+    var directive Directive
+    lexer.NextTokenIs(TOKEN_AT)
+    directive.LineNum = lexer.GetLineNum()
+    directive.Name = parseName(lexer)
+    if lexer.LookAhead() == TOKEN_LEFT_PAREN {
+        directive.Arguments = parseArguments(lexer)
+    }
+    return &directive
 }
 
 /*
