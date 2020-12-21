@@ -10,6 +10,7 @@ import (
     "fmt"
     // "os"
     "strconv"
+    "errors"
 
     "github.com/davecgh/go-spew/spew"
 
@@ -21,14 +22,19 @@ import (
  * Document ::= <Ignored> Definition+ <Ignored>
  */
 
-func parseDocument(lexer *Lexer) *Document {
-    fmt.Println("\n\n\033[33m//////////////////////////////////////////////////////////////////////\033[0m\n")
+func parseDocument(lexer *Lexer) (*Document, error) {
+    fmt.Println("\n\n\033[33m////////////////////////////////////////// Parser Start ///////////////////////////////////////\033[0m\n")
     fmt.Println("parseDocument\n")
+    var definitions []Definition
+    var err error
+    if definitions, err = parseDefinitions(lexer); err != nil {
+        return nil, err
+    }
     return &Document{
         LastLineNum:       lexer.GetLineNum(),
-        Definitions:       parseDefinitions(lexer),
+        Definitions:       definitions,
         // ReturnExpressions: parseReturnExpressions(lexer),
-    }
+    }, nil
 }
 
 func isDocumentEnd(tokenType int) bool {
@@ -63,17 +69,21 @@ func parseName(lexer *Lexer) *Name {
  * Parse Definition
  * Definition ::= TypeSystemDefinition | OperationDefinition | FragmentDefinition
  */
-func parseDefinitions(lexer *Lexer) []Definition {
+func parseDefinitions(lexer *Lexer) ([]Definition, error) {
     var definitions []Definition
     for !isDocumentEnd(lexer.LookAhead()) {
-        definition := parseDefinition(lexer)
+        var definition Definition
+        var err error
+        if definition, err = parseDefinition(lexer); err != nil {
+            return nil, err
+        }
         fmt.Printf("- definitions ------\n%v\n", definition)
         definitions = append(definitions, definition)
     }   
-    return definitions
+    return definitions, nil
 }
 
-func parseDefinition(lexer *Lexer) Definition {
+func parseDefinition(lexer *Lexer) (Definition, error) {
     // parse OperationType and OperationName
     switch lexer.LookAhead() {
     // type system definitation
@@ -119,17 +129,19 @@ func parseDefinition(lexer *Lexer) Definition {
         return parseFragmentDefinition(lexer)
     default:
         // return parseQueryShorthandDefinition(lexer)
-        return nil
+        return nil, nil
     }
 }
 
-func parseTypeSystemDefinition(lexer *Lexer) *TypeSystemDefinition {
+func parseTypeSystemDefinition(lexer *Lexer) (Definition, error) {
     nextToken := lexer.LookAhead()
-    var description string 
+    var description StringValue 
     var err error
     // parse description
     if nextToken == TOKEN_QUOTE || nextToken == TOKEN_DUOQUOTE ||  nextToken == TOKEN_TRIQUOTE || nextToken == TOKEN_HEXQUOTE {
-        description, err = parseDescription(lexer)
+        if description, err = parseDescription(lexer); err != nil {
+            return nil, err
+        }
     }
     // type definition body
     switch lexer.LookAhead() {
@@ -152,10 +164,12 @@ func parseTypeSystemDefinition(lexer *Lexer) *TypeSystemDefinition {
     case TOKEN_SCHEMA:
         return parseTypeSystemDefinition(lexer)
     case TOKEN_ENUM:
-        enumTypeDefinition, err := parseEnumTypeDefinition(lexer)
-        if description != nil & err == nil {
-            enumTypeDefinition.Description = description
+        var enumTypeDefinition *EnumTypeDefinition
+        var err error
+        if enumTypeDefinition, err = parseEnumTypeDefinition(lexer); err != nil {
+            return nil, err
         }
+        enumTypeDefinition.Description = description
         return enumTypeDefinition, err
     case TOKEN_INPUT:
         return parseTypeSystemDefinition(lexer)
@@ -166,7 +180,7 @@ func parseTypeSystemDefinition(lexer *Lexer) *TypeSystemDefinition {
     case TOKEN_SCALAR:
         return parseTypeSystemDefinition(lexer)
     default:
-        return nil
+        return nil, nil
     }
     // append description
     
@@ -180,38 +194,7 @@ func parseTypeSystemDefinition(lexer *Lexer) *TypeSystemDefinition {
  */
 var parseDescription = parseStringValue
 
-/**
- * parseStringValue
- * @Reference: http://spec.graphql.org/draft/#StringValue
- * StringValue
- *     ""
- *     "StringCharacterlist"
- *     """BlockStringCharacterlistopt"""
- */
-func parseStringValue(lexer *Lexer) (string, error) {
-    if lexer.LookAhead() == TOKEN_HEXQUOTE {
-        lexer.NextTokenIs(TOKEN_HEXQUOTE)
-        return "", nil
-    }
-    if lexer.LookAhead() == TOKEN_DUOQUOTE {
-        lexer.NextTokenIs(TOKEN_DUOQUOTE)
-        return "", nil
-    }
-    if lexer.LookAhead() == TOKEN_TRIQUOTE {
-        lexer.NextTokenIs(TOKEN_TRIQUOTE)
-        str := lexer.scanBeforeToken(TOKEN_QUADQUOTE)
-        lexer.NextTokenIs(TOKEN_TRIQUOTE)
-        return str, nil
-    }
-    if lexer.LookAhead() == TOKEN_QUOTE {
-        lexer.NextTokenIs(TOKEN_QUOTE)
-        str := lexer.scanBeforeToken(TOKEN_QUOTE)
-        lexer.NextTokenIs(TOKEN_QUOTE)
-        return str, nil
-    }
-    err := "not a StringValue"
-    return "", errors.New(err)
-}
+
 
 // parseTypeSystemDefinition
 // parseObjectTypeDefinition
@@ -231,10 +214,13 @@ func parseEnumTypeDefinition(lexer *Lexer) (*EnumTypeDefinition, error) {
     fmt.Printf("\033[31m[INTO] func parseEnumTypeDefinition  \033[0m\n")
 
     var enumTypeDefinition EnumTypeDefinition
+    var typeName Name
+    var err error
     // start
     lexer.NextTokenIs(TOKEN_ENUM)
-    _, enumTypeDefinition.Name := lexer.NextTokenIs(TOKEN_IDENTIFIER)
-    if enumTypeDefinition.Directives, err := parseDirectives(lexer); err != nil {
+    _, typeName.Value = lexer.NextTokenIs(TOKEN_IDENTIFIER)
+    enumTypeDefinition.Name = &typeName
+    if enumTypeDefinition.Directives, err = parseDirectives(lexer); err != nil {
         return nil, err
     }
     lexer.NextTokenIs(TOKEN_LEFT_BRACE)
@@ -243,14 +229,19 @@ func parseEnumTypeDefinition(lexer *Lexer) (*EnumTypeDefinition, error) {
         if lexer.LookAhead() == TOKEN_RIGHT_BRACE {
             break
         }
-        enumTypeDefinition.Values = append(enumTypeDefinition.Values,  parseEnumValueDefinition(lexer))
+        var enumValueDefinition *EnumValueDefinition
+        var err error
+        if enumValueDefinition, err = parseEnumValueDefinition(lexer); err != nil {
+            return nil, err
+        }
+        enumTypeDefinition.Values = append(enumTypeDefinition.Values, enumValueDefinition)
     }
 
     lexer.NextTokenIs(TOKEN_RIGHT_BRACE)
-    return &enumTypeDefinition
+    return &enumTypeDefinition, nil
 }
 
-func parseEnumValueDefinition(lexer *Lexer) *EnumValueDefinition {
+func parseEnumValueDefinition(lexer *Lexer) (*EnumValueDefinition, error) {
     var enumValueDefinition EnumValueDefinition
     nextToken := lexer.LookAhead()
     var err error
@@ -259,9 +250,11 @@ func parseEnumValueDefinition(lexer *Lexer) *EnumValueDefinition {
         enumValueDefinition.Description, err = parseDescription(lexer)
     }
     // EnumValue
-    enumValueDefinition.Value      := parseName(lexer)
-    enumValueDefinition.Directives := parseDirectives(lexer)
-    return &enumValueDefinition
+    enumValueDefinition.Value      = parseName(lexer)
+    if enumValueDefinition.Directives, err = parseDirectives(lexer); err != nil {
+        return nil, err
+    }
+    return &enumValueDefinition, nil
 }
 
 // parseInputObjectTypeDefinition
@@ -276,17 +269,18 @@ func parseEnumValueDefinition(lexer *Lexer) *EnumValueDefinition {
  * OperationType ::= Query | Mutation | Subscription  
  */
 
-func parseOperationDefinition(lexer *Lexer) *OperationDefinition {
+func parseOperationDefinition(lexer *Lexer) (*OperationDefinition, error) {
     fmt.Printf("\033[31m[INTO] func parseOperationDefinition  \033[0m\n")
 
     spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
 
     var lineNum               int
-    var OperationType         *OperationType
-    var OperationName         *OperationName
-    var VariableDefinitions []*VariableDefinition
-    var Directives          []*Directive
-    var SelectionSet          *SelectionSet
+    var operationType         *OperationType
+    var operationName         *OperationName
+    var variableDefinitions []*VariableDefinition
+    var directives          []*Directive
+    var selectionSet          *SelectionSet
+    var err error
 
     lineNum = lexer.GetLineNum()
 
@@ -296,34 +290,38 @@ func parseOperationDefinition(lexer *Lexer) *OperationDefinition {
     }
 
     // named operation
-    OperationType       = parseOperationType(lexer)
-    fmt.Printf("\033[33mOperationType: %v \033[0m\n", OperationType)
-    OperationName       = parseOperationName(lexer)
-    fmt.Printf("\033[33mOperationName: %v \033[0m\n", OperationName.Name)
-    VariableDefinitions = parseVariableDefinitions(lexer)
-    fmt.Printf("\033[33mVariableDefinitions: %v \033[0m\n", VariableDefinitions)
-    spewo.Dump(VariableDefinitions)
+    operationType       = parseOperationType(lexer)
+    fmt.Printf("\033[33mOperationType: %v \033[0m\n", operationType)
+    operationName       = parseOperationName(lexer)
+    fmt.Printf("\033[33mOperationName: %v \033[0m\n", operationName.Name)
+    variableDefinitions = parseVariableDefinitions(lexer)
+    fmt.Printf("\033[33mVariableDefinitions: %v \033[0m\n", variableDefinitions)
+    spewo.Dump(variableDefinitions)
 
-    Directives          = parseDirectives(lexer)
-    fmt.Printf("\033[33mDirectives: %v \033[0m\n", Directives)
+    if directives, err = parseDirectives(lexer); err != nil {
+        return nil, err
+    }
+    fmt.Printf("\033[33mDirectives: %v \033[0m\n", directives)
 
 
     SHORT_QUERY_OPERATION:
         fmt.Printf("\033[33mParse SHORT_QUERY_OPERATION:  \033[0m\n")
         lexer.NextTokenIs(TOKEN_LEFT_BRACE)
-        SelectionSet    = parseSelectionSet(lexer)
+        if selectionSet, err = parseSelectionSet(lexer); err != nil {
+            return nil, err
+        }
         lexer.NextTokenIs(TOKEN_RIGHT_BRACE)
-        fmt.Printf("\033[33mSelectionSet: %v \033[0m\n", SelectionSet)
+        fmt.Printf("\033[33mSelectionSet: %v \033[0m\n", selectionSet)
 
     // build OperationDefinition
     return &OperationDefinition{
         lineNum,
-        OperationType,
-        OperationName,
-        VariableDefinitions,
-        Directives,
-        SelectionSet,
-    }
+        operationType,
+        operationName,
+        variableDefinitions,
+        directives,
+        selectionSet,
+    }, nil
 }
 
 
@@ -486,7 +484,7 @@ func parseValue(lexer *Lexer) Value {
     case TOKEN_NUMBER:     // number, include IntValue, FloatValue
         value = parseNumberValue(lexer)
     case TOKEN_QUOTE:      // string
-        value = parseStringValue(lexer)
+        value, _ = parseStringValue(lexer)
     case TOKEN_TRUE:
         value = parseBooleanValue(lexer)
     case TOKEN_FALSE:
@@ -542,24 +540,60 @@ func parseNumberValue(lexer *Lexer) Value {
 //     return nil
 // }
 // 
-func parseStringValue(lexer *Lexer) StringValue {
-    fmt.Printf("\033[31m[INTO] func parseStringValue  \033[0m\n")
 
-    lexer.NextTokenIs(TOKEN_QUOTE)
-    // in quote, all token except TOKEN_QUOTE are string (TOKEN_IDENTIFIER)
-    var strBuf strings.Builder
-    for ;; {
-        tokenType := lexer.LookAhead()
-        if tokenType != TOKEN_QUOTE {
-            _, token := lexer.NextTokenIs(tokenType)
-            strBuf.WriteString(token)
-        } else {
-            break;
-        }
+/**
+ * parseStringValue
+ * @Reference: http://spec.graphql.org/draft/#StringValue
+ * StringValue
+ *     ""
+ *     "StringCharacterlist"
+ *     """BlockStringCharacterlistopt"""
+ */
+func parseStringValue(lexer *Lexer) (StringValue, error) {
+    lineNum := lexer.GetLineNum()
+    if lexer.LookAhead() == TOKEN_HEXQUOTE {
+        lexer.NextTokenIs(TOKEN_HEXQUOTE)
+        return StringValue{lineNum, ""}, nil
     }
-    lexer.NextTokenIs(TOKEN_QUOTE)
-    return StringValue{lexer.GetLineNum(), strBuf.String()}
+    if lexer.LookAhead() == TOKEN_DUOQUOTE {
+        lexer.NextTokenIs(TOKEN_DUOQUOTE)
+        return StringValue{lineNum, ""}, nil
+    }
+    if lexer.LookAhead() == TOKEN_TRIQUOTE {
+        lexer.NextTokenIs(TOKEN_TRIQUOTE)
+        str := lexer.scanBeforeToken(tokenNameMap[TOKEN_TRIQUOTE])
+        lexer.NextTokenIs(TOKEN_TRIQUOTE)
+        return StringValue{lineNum, str}, nil
+    }
+    if lexer.LookAhead() == TOKEN_QUOTE {
+        lexer.NextTokenIs(TOKEN_QUOTE)
+        str := lexer.scanBeforeToken(tokenNameMap[TOKEN_QUOTE])
+        lexer.NextTokenIs(TOKEN_QUOTE)
+        return StringValue{lineNum, str}, nil
+    }
+    err := "not a StringValue"
+    return StringValue{lineNum, ""}, errors.New(err)
 }
+
+// func parseStringValue(lexer *Lexer) StringValue {
+//     fmt.Printf("\033[31m[INTO] func parseStringValue  \033[0m\n")
+// 
+//     lexer.NextTokenIs(TOKEN_QUOTE)
+//     // in quote, all token except TOKEN_QUOTE are string (TOKEN_IDENTIFIER)
+//     var strBuf strings.Builder
+//     for ;; {
+//         tokenType := lexer.LookAhead()
+//         if tokenType != TOKEN_QUOTE {
+//             _, token := lexer.NextTokenIs(tokenType)
+//             strBuf.WriteString(token)
+//         } else {
+//             break;
+//         }
+//     }
+//     lexer.NextTokenIs(TOKEN_QUOTE)
+//     return StringValue{lexer.GetLineNum(), strBuf.String()}
+// }
+
 // 
 // func StringCharacter(lexer *Lexer) *StringCharacter {
 //     return nil
@@ -602,18 +636,18 @@ func parseObjectField(lexer *Lexer) *ObjectField {
     Directive ::= <"@"> Name Arguments? <Ignored>
  */
 
-func parseDirectives(lexer *Lexer) []*Directive {
+func parseDirectives(lexer *Lexer) ([]*Directive, error) {
     fmt.Printf("\033[31m[INTO] func parseDirectives  \033[0m\n")
 
     var directives []*Directive
     if lexer.LookAhead() != TOKEN_AT {
-        return directives
+        return directives, nil
     }
     for lexer.LookAhead() == TOKEN_AT { // Directive start with "@"
         directive := parseDirective(lexer)
         directives = append(directives, directive)
     }
-    return directives
+    return directives, nil
 }
 
 func parseDirective(lexer *Lexer) *Directive {
@@ -674,20 +708,25 @@ func parseArgumentValue(lexer *Lexer) *ArgumentValue {
     Selection ::= Field <Ignored> | FragmentSpread <Ignored> | InlineFragment <Ignored>
  */
 
-func parseSelectionSet(lexer *Lexer) *SelectionSet {
+func parseSelectionSet(lexer *Lexer) (*SelectionSet, error) {
     fmt.Printf("\033[31m[INTO] func parseSelectionSet  \033[0m\n")
 
     var selections []Selection
     lineNum := lexer.GetLineNum() 
     // parse variable def until token is "}"
     for lexer.LookAhead() != TOKEN_RIGHT_BRACE {
-        selections = append(selections, parseSelection(lexer).(Selection))
+        var selectionInterface interface{}
+        var err error 
+        if selectionInterface, err = parseSelection(lexer); err != nil {
+            return nil, err
+        }
+        selections = append(selections, selectionInterface.(Selection))
     }
 
-    return &SelectionSet{lineNum, selections}
+    return &SelectionSet{lineNum, selections}, nil
 }
 
-func parseSelection(lexer *Lexer) interface{} {
+func parseSelection(lexer *Lexer) (interface{}, error) {
     fmt.Printf("\033[31m[INTO] func parseSelection  \033[0m\n")
 
     switch lexer.LookAhead() {
@@ -705,7 +744,7 @@ func parseSelection(lexer *Lexer) interface{} {
     FieldName ::= Name
  */
 
-func parseField(lexer *Lexer) *Field {
+func parseField(lexer *Lexer) (*Field, error) {
     fmt.Printf("\033[31m[INTO] func parseField  \033[0m\n")
 
     var alias *Alias
@@ -713,6 +752,7 @@ func parseField(lexer *Lexer) *Field {
     var arguments []*Argument
     var directives []*Directive
     var selectionSet *SelectionSet
+    var err error
     //  Alias & FieldName
     name := parseName(lexer)
     fmt.Printf("parseField.parseName() %v\n", name)
@@ -734,7 +774,9 @@ func parseField(lexer *Lexer) *Field {
 
     // Directives
     if lexer.LookAhead() == TOKEN_AT {
-        directives = parseDirectives(lexer)
+        if directives, err = parseDirectives(lexer); err != nil {
+            return nil, err
+        }
         fmt.Printf("\033[33mdirectives: %v \033[0m\n", directives)
     }
 
@@ -742,11 +784,13 @@ func parseField(lexer *Lexer) *Field {
     if lexer.LookAhead() == TOKEN_LEFT_BRACE {
         fmt.Printf("\033[33m into more SelectionSet: \033[0m\n")
         lexer.NextTokenIs(TOKEN_LEFT_BRACE)
-        selectionSet = parseSelectionSet(lexer)
+        if selectionSet, err = parseSelectionSet(lexer); err != nil {
+            return nil, err
+        }
         lexer.NextTokenIs(TOKEN_RIGHT_BRACE)
         fmt.Printf("\033[33m out more SelectionSet: \033[0m\n")
     }
-    return &Field{lineNum, alias, fieldName, arguments, directives, selectionSet}
+    return &Field{lineNum, alias, fieldName, arguments, directives, selectionSet}, nil
 }
 
 func parseFieldName(lexer *Lexer) *FieldName {
@@ -763,8 +807,8 @@ func parseFieldName(lexer *Lexer) *FieldName {
     FragmentName ::= Name
  */
 
-func parseFragment(lexer *Lexer) interface{} {
-    return nil
+func parseFragment(lexer *Lexer) (interface{}, error) {
+    return nil, nil
 }
 
 func parseFragmentSpread(lexer *Lexer) *FragmentSpread {
@@ -845,6 +889,6 @@ func parseTypeCondition(lexer *Lexer) *TypeCondition {
  * Parse FragmentDefinition
  * FragmentDefinition ::= <"fragment"> <Ignored> FragmentName <Ignored> TypeCondition Directives? SelectionSet
  */
-func parseFragmentDefinition(lexer *Lexer) *FragmentDefinition {
-    return nil
+func parseFragmentDefinition(lexer *Lexer) (*FragmentDefinition, error) {
+    return nil, nil
 }

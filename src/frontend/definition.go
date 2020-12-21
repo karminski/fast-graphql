@@ -8,18 +8,24 @@ type Definition interface{
 }
 
 // Definition should be 
+var _ Definition = (*TypeSystemDefinition)(nil)
+var _ Definition = (*EnumTypeDefinition)(nil)
 var _ Definition = (*OperationDefinition)(nil)
 // var _ Definition = (*FragmentDefinition)(nil)
 
 
 /**
  * TypeSystemDefinition
- * TypeSystemDefinition ::= TypeDefinition | InterfaceDefinition | UnionDefinition | SchemaDefinition | EnumDefinition | InputDefinition | DirectiveDefinition | TypeExtensionDefinition | ScalarDefinition
+ * TypeSystemDefinition ::= TypeDefinition | InterfaceDefinition | UnionDefinition | SchemaDefinition | EnumTypeDefinition | InputDefinition | DirectiveDefinition | TypeExtensionDefinition | ScalarDefinition
  */
 
 const TypeSystemDefinitionType = "TypeSystemDefinition"
 
-type TypeSystemDefinition interface{}
+type TypeSystemDefinition struct{
+    LineNum int
+    TypeName *Name 
+
+}
 
 func (typeSystemDefinition *TypeSystemDefinition) GetDefinitionType() string {
     return TypeSystemDefinitionType
@@ -36,14 +42,18 @@ func (typeSystemDefinition *TypeSystemDefinition) GetDefinitionType() string {
 type EnumTypeDefinition struct {
     LineNum        int 
     Name          *Name
-    Description    string
+    Description    StringValue
     Directives  []*Directive
     Values      []*EnumValueDefinition
 }
 
+func (enumTypeDefinition EnumTypeDefinition) GetDefinitionType() string {
+    return TypeSystemDefinitionType
+}
+
 type EnumValueDefinition struct {
     LineNum        int
-    Description    string 
+    Description    StringValue 
     Value         *Name
     Directives  []*Directive
 }

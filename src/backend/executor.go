@@ -15,7 +15,7 @@ import (
 
 )
 
-const DUMP = false
+const DUMP_FRONTEND = true
 
 type Request struct {
     // GraphQL Schema config for server side
@@ -53,15 +53,21 @@ func getFieldName(field *frontend.Field) string {
 }
 
 func Execute(request Request) (*Result) {
+    var document *frontend.Document
+    var err error
     finalResult := Result{} 
     // debugging
     spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
 
     // process input
-    document := frontend.Compile(request.Query)
+    if document, err = frontend.Compile(request.Query); err != nil {
+        spewo.Dump(err)
+        os.Exit(1)
+    }
+
     // @todo: THE DOCUMENT NEED VALIDATE!
     
-    if DUMP {
+    if DUMP_FRONTEND {
         fmt.Printf("\n")
         fmt.Printf("\033[33m    [DUMP] Document:  \033[0m\n")
         spewo.Dump(document)
@@ -76,6 +82,7 @@ func Execute(request Request) (*Result) {
     // selectionSetFields := getSelectionSetFields(selectionSet)
     objectFields       := request.Schema.GetQueryObjectFields()
     // execute
+    fmt.Println("\n\n\033[33m////////////////////////////////////////// Executor Start ///////////////////////////////////////\033[0m\n")
     resolvedResult, _ := resolveSelectionSet(request, selectionSet, objectFields, nil)
     fmt.Printf("\033[33m    [DUMP] resolvedResult:  \033[0m\n")
     spewo.Dump(resolvedResult)

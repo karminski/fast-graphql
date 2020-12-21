@@ -239,7 +239,7 @@ func (lexer *Lexer) scan(regexp *regexp.Regexp) string {
 
 // return content before token
 func (lexer *Lexer) scanBeforeToken(token string) string {
-    s = strings.Split(lexer.document, token)
+    s := strings.Split(lexer.document, token)
     if len(s) < 2 {
         panic("unreachable!")
         return ""

@@ -48,7 +48,7 @@ Steps
     - object
 
 - 修正全部 Ignored Definition
-- 完善 errors
+- 完善内部函数错误处理
 
 
 
@@ -80,6 +80,14 @@ Improvements
 - 并行优化
 
 
+Documents
+---------
+
+Examples
+--------
+
+- 从 Get 中获取 schema
+- 从 Post 中获取 schema
 
 Reference
 ---------

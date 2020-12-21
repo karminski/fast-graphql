@@ -4,10 +4,16 @@ import (
     "encoding/json"
     "fmt"
     "net/http"
+    "io/ioutil"
 
     "fast-graphql/src/backend"
     "github.com/davecgh/go-spew/spew"
 
+)
+
+const (
+    Gender_Male   = "MALE"
+    Gender_Female = "FEMALE"
 )
 
 type User struct {
@@ -16,6 +22,7 @@ type User struct {
     Email   string  `json:"email"`
     Married bool    `json:"married"`
     Height  float64 `json:"height"`
+    Gender  string  `json:"gender"`
 }
 
 var users = []User{
@@ -25,6 +32,7 @@ var users = []User{
         Email: "bob@email.com",
         Married: false,
         Height: 172.53,
+        Gender: Gender_Male,
     },
     {
         Id:    2,
@@ -32,6 +40,7 @@ var users = []User{
         Email: "Alice@email.com",
         Married: false,
         Height: 175.2,
+        Gender: Gender_Female,
     },
     {
         Id:    3,
@@ -39,6 +48,7 @@ var users = []User{
         Email: "Tim@email.com",
         Married: true,
         Height: 162.3,
+        Gender: Gender_Male,
     },
     {
         Id:    4,
@@ -46,6 +56,7 @@ var users = []User{
         Email: "Peter@email.com",
         Married: false,
         Height: 181.9,
+        Gender: Gender_Male,
     },
     {
         Id:    5,
@@ -53,6 +64,7 @@ var users = []User{
         Email: "Juice@email.com",
         Married: true,
         Height: 132.9,
+        Gender: Gender_Female,
     },
 }
 
@@ -79,6 +91,10 @@ var userType, _ = backend.NewObject(
             "height": &backend.ObjectField{
                 Name: "height",
                 Type: backend.Float,
+            },
+            "gender": &backend.ObjectField{
+                Name: "gender",
+                Type: backend.String,
             },
         },
     },
@@ -109,6 +125,10 @@ var queryType, _ = backend.NewObject(
                     "height": &backend.Argument{
                         Name: "height",
                         Type: backend.Float,
+                    },
+                    "gender": &backend.Argument{
+                        Name: "gender",
+                        Type: backend.String,
                     },
                 },
                 ResolveFunction: func(p backend.ResolveParams) (interface{}, error) {
@@ -162,6 +182,17 @@ var queryType, _ = backend.NewObject(
                             }
                         }
                     }
+                    gender, ok := p.Arguments["gender"].(string)
+                    if ok {
+                        fmt.Printf("\033[33m    [INTO] gender:  \033[0m\n")
+
+                        // Find gender
+                        for _, user := range users {
+                            if user.Gender == gender {
+                                return user, nil
+                            }
+                        }
+                    }
                     return nil, nil
                 },
             },
@@ -186,22 +217,13 @@ var schema, _ = backend.NewSchema(
 )
 
 
-func executeQuery(query string, variables string, schema backend.Schema) *backend.Result {
-
+func executeQuery(query string, variables map[string]interface{}, schema backend.Schema) *backend.Result {
     var result *backend.Result 
-    var decodedVariables map[string]interface{}
-    // unmarshal variables
-    decodedVariables, err := backend.DecodeVariables(variables)
-    if err != nil {
-        result.Error = err
-        return result
-    }
-
     // execute
     result = backend.Execute(backend.Request{
         Schema: schema,
         Query:  query,
-        Variables: decodedVariables,
+        Variables: variables,
     })
     // if len(result.Errors) > 0 {
     //     fmt.Printf("errors: %v", result.Errors)
@@ -211,10 +233,25 @@ func executeQuery(query string, variables string, schema backend.Schema) *backen
 
 func main() {
     http.HandleFunc("/product", func(w http.ResponseWriter, r *http.Request) {
-        query     := r.URL.Query().Get("query")
-        variables := r.URL.Query().Get("variables")
+        fmt.Println("\n\n\033[33m////////////////////////////////////////// Request Start ///////////////////////////////////////\033[0m\n")
+
+        spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+
+        // HTTP Post method
+        var decodedVariables map[string]interface{}
+        body, _ := ioutil.ReadAll(r.Body)
+        spewo.Dump(body)
+        json.Unmarshal([]byte(body), &decodedVariables)
+
+        // HTTP Get method 
+        query     := decodedVariables["query"].(string)
+        variables := decodedVariables["variables"].(map[string]interface{})
+        
         // execute
         result    := executeQuery(query, variables, schema)
+
+        // return
+        w.Header().Set("content-type","text/json")
         json.NewEncoder(w).Encode(result)
     })
     fmt.Printf("START.\n")
