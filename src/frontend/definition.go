@@ -143,10 +143,10 @@ type FieldDefinition struct {
  */
 
 type VariableDefinition struct {
-    LineNum                 int 
-    VariableName            *VariableName
-    Type                    Type
-    DefaultValue            *DefaultValue
+    LineNum        int 
+    Variable      *Name
+    Type           Type
+    DefaultValue  *DefaultValue
 }
 
 type VariableName struct {
@@ -224,10 +224,10 @@ type Value interface {
 var _ Value = (*VariableValue)(nil)
 var _ Value = (*IntValue)(nil)
 var _ Value = (*FloatValue)(nil)
-var _ Value = (*ListValue)(nil)
 var _ Value = (*StringValue)(nil)
 var _ Value = (*BooleanValue)(nil)
 var _ Value = (*EnumValue)(nil)
+var _ Value = (*ListValue)(nil)
 var _ Value = (*ObjectValue)(nil)
 
 type VariableValue struct {
@@ -245,11 +245,6 @@ type FloatValue struct {
     Value   float64
 }
 
-type ListValue struct {
-    LineNum int 
-    Value   []Value
-}
-
 type StringValue struct {
     LineNum int
     Value   string
@@ -260,14 +255,23 @@ type BooleanValue struct {
     Value   bool
 }
 
+type NullValue struct {
+    LineNum int
+}
+
 type EnumValue struct {
     LineNum int 
     Value   string
 }
 
+type ListValue struct {
+    LineNum int 
+    Value   []Value
+}
+
 type ObjectValue struct {
     LineNum int 
-    Fields []*ObjectField
+    Value []*ObjectField
 }
 
 /**
@@ -278,7 +282,7 @@ type ObjectValue struct {
 type ObjectField struct {
     LineNum    int
     Name       *Name 
-    Value      *Value
+    Value      Value
 }
 
 /**
@@ -295,27 +299,17 @@ type Directive struct {
 
 
 /**
- * Arguments ::= <"("> <Ignored> Argument+ <")">
- * Argument ::= ArgumentName <":"> <Ignored> ArgumentValue <Ignored>*
- * ArgumentName ::= Name 
- * ArgumentValue ::= Value | VariableName
+ * Arguments Section
+ * Arguments ::= <"("> <Ignored> Argument+ <Ignored> <")"> <Ignored>
+ * Argument ::= Name <Ignored> <":"> <Ignored> Value <Ignored>
  */
 
 type Argument struct {
-    LineNum         int
-    ArgumentName    *ArgumentName
-    ArgumentValue   *ArgumentValue
+    LineNum  int
+    Name    *Name
+    Value    Value
 }
 
-type ArgumentName struct {
-    LineNum    int 
-    Name       *Name
-}
-
-type ArgumentValue struct {
-    LineNum    int 
-    Value      Value
-}
 
 /**
  * SelectionSet Definition

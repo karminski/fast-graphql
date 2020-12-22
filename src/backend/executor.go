@@ -138,8 +138,8 @@ func getArgumentsMap(request Request, arguments []*frontend.Argument) (map[strin
     argumentsMap := make(map[string]interface{}, len(arguments))
     for _, argument := range arguments {
         // detect value type & fill
-        fieldName      := argument.ArgumentName.Name.Value
-        interfaceValue := argument.ArgumentValue.Value
+        fieldName      := argument.Name.Value
+        interfaceValue := argument.Value
         if val, ok := interfaceValue.(frontend.VariableValue); ok {
             // resolve input variable value 
             if matchedValue, ok := request.Variables[val.Value]; ok {

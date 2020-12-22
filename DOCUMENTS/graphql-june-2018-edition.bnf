@@ -1,0 +1,233 @@
+# graphql-june-2018-edition.bnf
+# version:    20200629:1
+# author:     karminski <code.karminski@outlook.com>
+
+# This GraphQL BNF file arranged by GraphQL Specifition June 2018.
+# http://spec.graphql.org/June2018/
+#
+# for BNF or EBNF grammar please see
+# http://matt.might.net/articles/grammars-bnf-ebnf/
+
+
+# Document Section
+Document ::= <Ignored> Definition+ <Ignored>
+
+
+# Definition Section
+Definition ::= ExecutableDefinition | TypeSystemDefinition | TypeSystemExtension
+ExecutableDefinition ::= OperationDefinition | FragmentDefinition
+
+
+# TypeSystemDefinition Section
+TypeSystemDefinition ::= SchemaDefinition | TypeDefinition | DirectiveDefinition
+
+
+# SchemaDefinition Section
+SchemaDefinition ::= <"schema"> <Ignored> Directives? <Ignored> <"{"> <Ignored> RootOperationTypeDefinition+ <Ignored> <"}"> <Ignored>
+RootOperationTypeDefinition ::= OperationType <Ignored> <":"> <Ignored> NamedType <Ignored>
+
+
+# TypeDefinition Section
+TypeDefinition ::= ScalarTypeDefinition | ObjectTypeDefinition | InterfaceTypeDefinition | UnionTypeDefinition | EnumTypeDefinition | InputObjectTypeDefinition
+ScalarTypeDefinition      ::= Description? <Ignored> <"scalar">    <Ignored> Name                                 <Ignored> Directives? <Ignored>
+ObjectTypeDefinition      ::= Description? <Ignored> <"type">      <Ignored> Name <Ignored> ImplementsInterfaces? <Ignored> Directives? <Ignored> FieldsDefinition?      <Ignored>
+InterfaceTypeDefinition   ::= Description? <Ignored> <"interface"> <Ignored> Name                                 <Ignored> Directives? <Ignored> FieldsDefinition?      <Ignored>
+UnionTypeDefinition       ::= Description? <Ignored> <"union">     <Ignored> Name                                 <Ignored> Directives? <Ignored> UnionMemberTypes?      <Ignored>
+EnumTypeDefinition        ::= Description? <Ignored> <"enum">      <Ignored> Name                                 <Ignored> Directives? <Ignored> EnumValuesDefinition   <Ignored>
+InputObjectTypeDefinition ::= Description? <Ignored> <"input">     <Ignored> Name                                 <Ignored> Directives? <Ignored> InputFieldsDefinition? <Ignored>
+
+
+# DirectiveDefinition Section
+DirectiveDefinition ::= Description? <Ignored> <"directive"> <Ignored> <"@"> <Ignored> Name <Ignored> ArgumentsDefinition? <Ignored> <"on"> <Ignored> DirectiveLocations <Ignored>
+DirectiveLocations ::= <"|">? <Ignored> DirectiveLocation <Ignored> | DirectiveLocations <Ignored> <"|"> <Ignored> DirectiveLocation <Ignored>
+DirectiveLocation ::= ExecutableDirectiveLocation | TypeSystemDirectiveLocation
+ExecutableDirectiveLocation ::= <"QUERY"> | <"MUTATION"> | <"SUBSCRIPTION"> | <"FIELD"> | <"FRAGMENT_DEFINITION"> | <"FRAGMENT_SPREAD"> | <"INLINE_FRAGMENT"> 
+TypeSystemDirectiveLocation ::= <"SCHEMA"> | <"SCALAR"> | <"OBJECT"> | <"FIELD_DEFINITION"> | <"ARGUMENT_DEFINITION"> | <"INTERFACE"> | <"UNION"> | <"ENUM"> | <"ENUM_VALUE"> | <"INPUT_OBJECT"> | <"INPUT_FIELD_DEFINITION"> 
+
+
+
+## TypeDefinition
+TypeDefinition ::= <"type"> <Ignored> TypeName <Ignored> Implements? <Ignored> <"{"> <Ignored> TypeFields <Ignored> <"}"> <Ignored>
+
+
+## UnionDefinition
+UnionDefinition ::= <"union"> <Ignored> TypeName <Ignored> <"="> <Ignored> UnionTypeNames
+
+## SchemaDefinition
+SchemaDefinition ::= <"schema"> <Ignored> <"{"> SchemaTypes <"}"> <Ignored>
+
+
+## InputDefinition
+InputDefinition ::= <"input"> <Ignored> TypeName <Ignored> <"{"> <Ignored> InputTypeFields <"}"> <Ignored>
+
+## DirectiveDefinition
+DirectiveDefinition ::= <"directive"> <Ignored> DirectiveName <Ignored> DirectiveOnName <Ignored>
+
+## TypeExtensionDefinition
+TypeExtensionDefinition ::= <"extend"> <Ignored> TypeDefinition
+
+
+## EnumValuesDefinition
+EnumValuesDefinition ::= <"{"> EnumValueDefinition+ <"}">
+EnumValueDefinition ::= Description? <Ignored> EnumValue <Ignored> Directives?
+EnumValue ::= Name
+
+## InputFieldsDefinition
+InputFieldsDefinition ::= <"{"> InputValueDefinition+ <"}">
+InputValueDefinition ::= Description? <Ignored> Name <Ignored> <":"> <Ignored> Type <Ignored> DefaultValue? <Ignored> Directives? <Ignored>
+
+
+
+## ImplementsInterfaces
+ImplementsInterfaces ::= implements <"&">? NamedType | ImplementsInterfaces <"&"> NamedType
+
+## FieldsDefinition
+FieldsDefinition ::= <"{"> FieldDefinition+ <"}">
+FieldDefinition ::= Description? <Ignored> Name <Ignored> ArgumentsDefinition? <Ignored> <":"> <Ignored> Type <Ignored> Directives? <Ignored>
+
+## ArgumentsDefinition
+ArgumentsDefinition ::= InputValueDefinition+
+InputValueDefinition ::= Description? <Ignored> Name <Ignored> <":"> <Ignored> Type <Ignored> DefaultValue? <Ignored> Directives? <Ignored>
+
+## UnionMemberTypes
+UnionMemberTypes ::= <"="> <Ignored> <"|">? <Ignored> NamedType <Ignored> | UnionMemberTypes <Ignored> <"|"> <Ignored> NamedType <Ignored>
+
+
+
+
+## TypeFields
+TypeFields ::= TypeField*
+
+## TypeField
+TypeField ::= FieldName TypeFieldArguments? <":"> <Ignored> [TypeFieldType | TypeFieldTypeRequired] <Ignored>
+TypeFieldArguments ::= <"("> TypeFieldArgument+ <")">
+TypeFieldType ::= TypeName | ListTypeName
+TypeFieldTypeRequired ::= TypeFieldType <"!">
+
+## TypeFieldArgument
+TypeFieldArgument ::= ArgumentName <":"> <Ignored> [Type | TypeRequired] <Ignored> TypeFieldArgumentDefault? <Ignored>
+TypeRequired ::= Type <"!">
+TypeFieldArgumentDefault ::= <"="> <Ignored> [StringValue / BooleanValue / IntValue / FloatValue / EnumValue]
+
+## UnionTypeNames
+UnionTypeNames ::= [TypeName <Ignored> | TypeName <Ignored> <"|"> <Ignored>]*
+
+## SchemaTypes
+SchemaTypes ::= SchemaType+
+SchemaType ::= QueryType | MutationType
+
+## QueryType
+QueryType ::= <Ignored> <"query"> <":"> <Ignored> Name <Ignored>
+
+## MutationType
+MutationType ::= <Ignored> <"mutation"> <":"> <Ignored> Name <Ignored>
+
+
+# // EnumFields ::= EnumField+
+# // EnumField ::= <Ignored> Name <Ignored> EnumType?
+
+## EnumType
+# // EnumType ::= <"@enum"> EnumTypeInt EnumIntValue <Ignored>
+# // EnumTypeInt ::= "Int"
+# // EnumIntValue ::= <"("> <"value:"> <Ignored> IntValue <")">
+
+## InputTypeFields
+InputTypeFields ::= InputTypeField*
+InputTypeField ::= FieldName <":"> <Ignored> [TypeFieldType | TypeFieldTypeRequired] <Ignored>
+
+## DirectiveName
+DirectiveName ::= <"@">TypeName
+
+## DirectiveOnName
+DirectiveOnName ::= <"on"> <Ignored> TypeName
+
+
+## Description
+Description ::= StringValue
+
+## StringValue
+
+
+# OperationDefinition Section
+OperationDefinition ::= <Ignored> OperationType <Ignored> Name? <Ignored> VariableDefinitions? <Ignored> Directives? SelectionSet | SelectionSet
+OperationType ::= <"query"> | <"mutation"> | <"subscription"> 
+
+
+# Name Section
+Name ::= #"[_A-Za-z][_0-9A-Za-z]*"
+
+
+# VariableDefinitions Section
+VariableDefinitions ::= <"("> VariableDefinition+ <")">
+VariableDefinition ::= <Ignored> Variable <":"> <Ignored> Type <Ignored> DefaultValue? <Ignored>
+Variable ::= <"$"> Name
+DefaultValue ::= <"="> <Ignored> Value
+
+
+# Type Section
+Type ::= NamedType | ListType | NonNullType
+NamedType ::= Name
+ListType ::= <"["> Type <"]">
+NonNullType ::= NamedType <"!"> | ListType <"!">
+
+
+
+# Value Section 
+Value        ::= Variable | IntValue | FloatValue | StringValue | BooleanValue | NullValue | EnumValue | ListValue | ObjectValue
+IntValue     ::= #"[\+\-0-9]+"
+FloatValue   ::= #"[\+\-0-9]+\.[0-9]"
+StringValue  ::= <"\"\"\""><"\"\"\""> | <"\""><"\""> | <"\"">StringCharacter<"\""> | <"\"\"\"">BlockStringCharacter<"\"\"\""> |
+BooleanValue ::= <"true"> | <"false">
+NullValue    ::= <"null">
+EnumValue    ::= #"(?!(true|false|null))[_A-Za-z][_0-9A-Za-z]*" # Name but not "true" or "false" or "null"
+ListValue    ::= <"["> <"]"> | <"["> Value+ <"]">
+ObjectValue  ::= <"{"> <"}"> | <"{"> ObjectField+ <"}">
+
+StringCharacter ::= #"[\x{9}\x{20}\x{21}\x{23}-\x{5B}\x{5D}-\uFFFF]" | "\\" | LineTerminator | "\u" | EscapedUnicode | EscapedCharacter
+EscapedUnicode ::= /[0-9A-Fa-f]{4}/
+EscapedCharacter ::= " | \ | / | b | f | n | r | t
+ObjectField ::= <Ignored> Name <Ignored> <":"> <Ignored> Value <Ignored>
+
+## Directives
+Directives ::= Directive+
+Directive ::= <"@"> Name Arguments? <Ignored>
+
+# Arguments Section
+Arguments ::= <"("> <Ignored> Argument+ <Ignored> <")"> <Ignored>
+Argument ::= Name <Ignored> <":"> <Ignored> Value <Ignored>
+
+## SelectionSet & Selection
+SelectionSet ::= <"{"> <Ignored> Selection+ <"}"> <Ignored>
+Selection ::= Field <Ignored> | FragmentSpread <Ignored> | InlineFragment <Ignored>
+
+## Field
+Field ::= Alias? <Ignored> FieldName <Ignored> Arguments? <Ignored> Directives? SelectionSet?
+Alias ::= Name <":">
+FieldName ::= Name
+
+## FragmentSpread
+FragmentSpread ::= <"..."> FragmentName <Ignored> Directives?
+FragmentName ::= Name
+
+## InlineFragment
+InlineFragment ::= <"..."> <Ignored> TypeCondition? Directives? SelectionSet?
+
+## TypeCondition
+TypeCondition ::= <"on"> <Ignored> TypeName <Ignored>
+
+## Ignored
+Ignored ::= Ignore*
+Ignore ::= UnicodeBOM | WhiteSpace | LineTerminator | Comment | Comma
+UnicodeBOM ::= "\uFEFF"
+WhiteSpace ::= #"[\x{9}\x{20}]"   ### ASCII: \t | Space
+LineTerminator ::= #"\x{A}" | #"\x{D}\x{A}" | #"\x{D}"   ### ASCII: \n | \r\n | \r 
+Comment ::= "#" CommentChar* <LineTerminator>
+Comma ::= ","
+CommentChar ::= #"[\x{9}\x{20}-\uFFFF]"
+
+
+
+# FragmentDefinition Section
+
+## FragmentDefinition
+FragmentDefinition ::= <"fragment"> <Ignored> FragmentName <Ignored> TypeCondition Directives? SelectionSet

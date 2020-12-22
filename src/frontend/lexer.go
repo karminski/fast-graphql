@@ -60,6 +60,7 @@ const (
     TOKEN_SCALAR                // scalar
     TOKEN_TRUE                  // true
     TOKEN_FALSE                 // false
+    TOKEN_NULL                  // null
 )
 
 var tokenNameMap = map[int]string{
@@ -98,6 +99,7 @@ var tokenNameMap = map[int]string{
     TOKEN_SCALAR        : "scalar",
     TOKEN_TRUE          : "true",
     TOKEN_FALSE         : "false",
+    TOKEN_NULL          : "null",
 }
 
 var keywords = map[string]int{
@@ -116,6 +118,7 @@ var keywords = map[string]int{
     "scalar"       : TOKEN_SCALAR,
     "true"         : TOKEN_TRUE,
     "false"        : TOKEN_FALSE,
+    "null"         : TOKEN_NULL,
 }
 
 // regex match patterns
