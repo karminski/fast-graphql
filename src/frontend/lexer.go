@@ -61,6 +61,7 @@ const (
     TOKEN_TRUE                  // true
     TOKEN_FALSE                 // false
     TOKEN_NULL                  // null
+    TOKEN_ON                    // on
 )
 
 var tokenNameMap = map[int]string{
@@ -100,6 +101,7 @@ var tokenNameMap = map[int]string{
     TOKEN_TRUE          : "true",
     TOKEN_FALSE         : "false",
     TOKEN_NULL          : "null",
+    TOKEN_ON            : "on",
 }
 
 var keywords = map[string]int{
@@ -119,6 +121,7 @@ var keywords = map[string]int{
     "true"         : TOKEN_TRUE,
     "false"        : TOKEN_FALSE,
     "null"         : TOKEN_NULL,
+    "on"           : TOKEN_ON,
 }
 
 // regex match patterns

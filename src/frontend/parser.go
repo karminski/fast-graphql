@@ -424,7 +424,7 @@ func parseType(lexer *Lexer) (Type, error) {
     // parse type
     switch lexer.LookAhead() {
     case TOKEN_IDENTIFIER:   // named type
-        if typeRet, err = parseTypeName(lexer); err != nil {
+        if typeRet, err = parseNamedType(lexer); err != nil {
             return nil, err
         }
     case TOKEN_LEFT_BRACKET: // list type, start with "["
@@ -442,15 +442,7 @@ func parseType(lexer *Lexer) (Type, error) {
     return typeRet, nil
 }
 
-func parseTypeName(lexer *Lexer) (*NamedType, error) {
-    fmt.Printf("\033[31m[INTO] func parseTypeName  \033[0m\n")
-    var namedType NamedType
-    var err       error
-    if namedType.Name, err = parseName(lexer); err != nil {
-        return nil, err
-    }
-    return &namedType, nil
-}
+var parseNamedType = parseName 
 
 func parseListType(lexer *Lexer) (*ListType, error) {
     fmt.Printf("\033[31m[INTO] func parseListType  \033[0m\n")
@@ -630,8 +622,8 @@ func parseNullValue(lexer *Lexer) (NullValue, error) {
 
 func parseEnumValue(lexer *Lexer) (EnumValue, error) {
     lineNum, token := lexer.NextTokenIs(TOKEN_IDENTIFIER)
-    canNotBe := map[string]bool{tokenNameMap[TOKEN_TRUE]: true, tokenNameMap[TOKEN_FALSE]: true, tokenNameMap[TOKEN_NULL]: true}
-    if _, ok := canNotBe[token]; ok {
+    shouldNotBe := map[string]bool{tokenNameMap[TOKEN_TRUE]: true, tokenNameMap[TOKEN_FALSE]: true, tokenNameMap[TOKEN_NULL]: true}
+    if _, ok := shouldNotBe[token]; ok {
         err := fmt.Sprintf("line %d: unexpected symbol near '%v', enum value can not be 'true' or 'false' or 'null'.", lineNum, token)
         panic(err)
     }
@@ -862,7 +854,12 @@ func parseSelection(lexer *Lexer) (interface{}, error) {
 
     switch lexer.LookAhead() {
     case TOKEN_DOTS:
-        return parseFragment(lexer)
+        lexer.NextTokenIs(TOKEN_DOTS)
+        if lexer.LookAhead() == TOKEN_IDENTIFIER { 
+            return parseFragmentSpread(lexer)
+        } else{
+            return parseInlineFragment(lexer)
+        }
     default:
         return parseField(lexer)
     }
@@ -942,42 +939,95 @@ func parseFieldName(lexer *Lexer) (*FieldName, error) {
     return &fieldName, nil
 }
 
-
-/* 
-    Parse FragmentSpread 
-    FragmentSpread ::= <"..."> FragmentName <Ignored> Directives?
-    FragmentName ::= Name
+/**
+ * FragmentSpread Section
+ * FragmentSpread     ::= <"..."> <Ignored> FragmentName <Ignored> Directives? <Ignored>
+ * FragmentDefinition ::= <"fragment"> <Ignored> FragmentName <Ignored> TypeCondition <Ignored> Directives? <Ignored> SelectionSet <Ignored>
+ * FragmentName       ::= Name # but not <"on">
+ * TypeCondition      ::= <"on"> <Ignored> NamedType <Ignored>
  */
 
-func parseFragment(lexer *Lexer) (interface{}, error) {
-    return nil, nil
+func parseFragmentSpread(lexer *Lexer) (*FragmentSpread, error) {
+    var fragmentSpread FragmentSpread
+    var err            error
+    if fragmentSpread.Name, err = parseFragmentName(lexer); err != nil {
+        return nil, err
+    }
+    if lexer.LookAhead() == TOKEN_AT {
+        if fragmentSpread.Directives, err = parseDirectives(lexer); err != nil {
+            return nil, err
+        }
+    }
+    return &fragmentSpread, nil
 }
 
-func parseFragmentSpread(lexer *Lexer) *FragmentSpread {
-    return nil
+func parseFragmentDefinition(lexer *Lexer) (*FragmentDefinition, error) {
+    var fragmentDefinition FragmentDefinition
+    var err                error
+    lexer.NextTokenIs(TOKEN_FRAGMENT)
+    if fragmentDefinition.Name, err = parseFragmentName(lexer); err != nil {
+        return nil, err
+    }
+    if fragmentDefinition.TypeCondition, err = parseNamedType(lexer); err != nil {
+        return nil, err
+    }
+    if lexer.LookAhead() == TOKEN_AT {
+        if fragmentDefinition.Directives, err = parseDirectives(lexer); err != nil {
+            return nil, err
+        }
+    }
+    if fragmentDefinition.SelectionSet, err = parseSelectionSet(lexer); err != nil {
+        return nil, err
+    }
+    return &fragmentDefinition, nil
 }
 
-func parseFragmentName(lexer *Lexer) *FragmentName {
-    return nil
+func parseFragmentName(lexer *Lexer) (*Name, error) {
+    var name *Name
+    var err   error
+    shoudNotBe := map[string]bool{tokenNameMap[TOKEN_ON]: true}
+    if name, err = parseName(lexer); err != nil {
+        return nil, err
+    }
+    if _, ok := shoudNotBe[name.Value]; ok {
+        err = errors.New("parseFragmentName(): FragmentName should not be  reserved word 'on'.")
+        return nil, err
+    }
+    return name, nil
 }
 
-/* 
-    Parse InlineFragment 
-    InlineFragment ::= <"..."> <Ignored> TypeCondition? Directives? SelectionSet?
+func parseTypeCondition(lexer *Lexer) (*Name, error) {
+    var name *Name 
+    var err   error
+    lexer.NextTokenIs(TOKEN_ON)
+    if name, err = parseName(lexer); err != nil {
+        return nil, err
+    }
+    return name, nil
+}
+
+/**
+ * InlineFragment Section
+ * InlineFragment ::= <"..."> <Ignored> TypeCondition? <Ignored> Directives? <Ignored> SelectionSet? <Ignored> 
  */
 
-func parseInlineFragment(lexer *Lexer) *InlineFragment {
-    return nil
-}
-
-
-/*
-    Parse TypeCondition
-    TypeCondition ::= <"on"> <Ignored> TypeName <Ignored>
- */
-
-func parseTypeCondition(lexer *Lexer) *TypeCondition {
-    return nil
+func parseInlineFragment(lexer *Lexer) (*InlineFragment, error) {
+    var inlineFragment InlineFragment
+    var err            error
+    if inlineFragment.TypeCondition, err = parseNamedType(lexer); err != nil {
+        return nil, err
+    }
+    if lexer.LookAhead() == TOKEN_AT {
+        if inlineFragment.Directives, err = parseDirectives(lexer); err != nil {
+            return nil, err
+        }
+    }
+    if lexer.LookAhead() == TOKEN_LEFT_BRACE {
+        if inlineFragment.SelectionSet, err = parseSelectionSet(lexer); err != nil {
+            return nil, err
+        }
+    }
+    return &inlineFragment, nil
 }
 
 
@@ -1026,11 +1076,3 @@ func parseTypeCondition(lexer *Lexer) *TypeCondition {
 // 
 // }
 
-
-/**
- * Parse FragmentDefinition
- * FragmentDefinition ::= <"fragment"> <Ignored> FragmentName <Ignored> TypeCondition Directives? SelectionSet
- */
-func parseFragmentDefinition(lexer *Lexer) (*FragmentDefinition, error) {
-    return nil, nil
-}

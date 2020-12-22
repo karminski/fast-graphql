@@ -365,25 +365,20 @@ type FieldName struct {
     Name       *Name
 }
 
-/**
- * ## FragmentDefinition
- * FragmentDefinition ::= <"fragment"> <Ignored> FragmentName <Ignored> TypeCondition Directives? SelectionSet
- */
 
+/**
+ * FragmentSpread Section
+ * FragmentSpread     ::= <"..."> <Ignored> FragmentName <Ignored> Directives? <Ignored>
+ * FragmentDefinition ::= <"fragment"> <Ignored> FragmentName <Ignored> TypeCondition <Ignored> Directives? <Ignored> SelectionSet <Ignored>
+ * FragmentName       ::= Name # but not <"on">
+ * TypeCondition      ::= <"on"> <Ignored> NamedType <Ignored>
+ */
 const FragmentDefinitionType = "FragmentDefinition"
 
-type FragmentDefinition struct {
-    LineNum int
-}
-
-func (fragmentDefinition *FragmentDefinition) GetDefinitionType() string {
-    return FragmentDefinitionType
-}
-
 type FragmentSpread struct {
-    LineNum    int
-    FragmentName    *FragmentName
-    Directives      []*Directive
+    LineNum       int
+    Name         *Name
+    Directives []*Directive
 }
 
 // FragmentSpread does not have SelectionSet section.
@@ -391,20 +386,27 @@ func (fragmentSpread *FragmentSpread) GetSelectionSet() *SelectionSet {
     return nil 
 }
 
-type FragmentName struct {
-    LineNum    int 
-    Name       *Name
+type FragmentDefinition struct {
+	LineNum          int
+	Name 	        *Name
+	TypeCondition   *Name
+	Directives    []*Directive
+	SelectionSet    *SelectionSet
 }
 
-/**
- * InlineFragment Definition
- * InlineFragment ::= <"..."> <Ignored> TypeCondition? Directives? SelectionSet?
- */
+func (fragmentDefinition *FragmentDefinition) GetDefinitionType() string {
+    return FragmentDefinitionType
+}
 
+
+/**
+ * # InlineFragment Section
+ * InlineFragment ::= <"..."> <Ignored> TypeCondition? <Ignored> Directives? <Ignored> SelectionSet? <Ignored>
+ */
 type InlineFragment struct {
     LineNum          int 
-    TypeCondition    *TypeCondition
-    Directives       []*Directive
+    TypeCondition    *Name
+    Directives     []*Directive
     SelectionSet     *SelectionSet
 }
 

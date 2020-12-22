@@ -173,61 +173,59 @@ NonNullType ::= NamedType <"!"> | ListType <"!">
 
 
 # Value Section 
-Value        ::= Variable | IntValue | FloatValue | StringValue | BooleanValue | NullValue | EnumValue | ListValue | ObjectValue
-IntValue     ::= #"[\+\-0-9]+"
-FloatValue   ::= #"[\+\-0-9]+\.[0-9]"
-StringValue  ::= <"\"\"\""><"\"\"\""> | <"\""><"\""> | <"\"">StringCharacter<"\""> | <"\"\"\"">BlockStringCharacter<"\"\"\""> |
-BooleanValue ::= <"true"> | <"false">
-NullValue    ::= <"null">
-EnumValue    ::= #"(?!(true|false|null))[_A-Za-z][_0-9A-Za-z]*" # Name but not "true" or "false" or "null"
-ListValue    ::= <"["> <"]"> | <"["> Value+ <"]">
-ObjectValue  ::= <"{"> <"}"> | <"{"> ObjectField+ <"}">
-
-StringCharacter ::= #"[\x{9}\x{20}\x{21}\x{23}-\x{5B}\x{5D}-\uFFFF]" | "\\" | LineTerminator | "\u" | EscapedUnicode | EscapedCharacter
-EscapedUnicode ::= /[0-9A-Fa-f]{4}/
+Value            ::= Variable | IntValue | FloatValue | StringValue | BooleanValue | NullValue | EnumValue | ListValue | ObjectValue
+IntValue         ::= #"[\+\-0-9]+"
+FloatValue       ::= #"[\+\-0-9]+\.[0-9]"
+StringValue      ::= <"\"\"\""><"\"\"\""> | <"\""><"\""> | <"\"">StringCharacter<"\""> | <"\"\"\"">BlockStringCharacter<"\"\"\""> |
+BooleanValue     ::= <"true"> | <"false">
+NullValue        ::= <"null">
+EnumValue        ::= #"(?!(true|false|null))[_A-Za-z][_0-9A-Za-z]*" # Name but not "true" or "false" or "null"
+ListValue        ::= <"["> <"]"> | <"["> Value+ <"]">
+ObjectValue      ::= <"{"> <"}"> | <"{"> ObjectField+ <"}">
+StringCharacter  ::= #"[\x{9}\x{20}\x{21}\x{23}-\x{5B}\x{5D}-\uFFFF]" | "\\" | LineTerminator | "\u" | EscapedUnicode | EscapedCharacter
+EscapedUnicode   ::= /[0-9A-Fa-f]{4}/
 EscapedCharacter ::= " | \ | / | b | f | n | r | t
-ObjectField ::= <Ignored> Name <Ignored> <":"> <Ignored> Value <Ignored>
+ObjectField      ::= <Ignored> Name <Ignored> <":"> <Ignored> Value <Ignored>
 
-## Directives
+
+# Directives Section
 Directives ::= Directive+
-Directive ::= <"@"> Name Arguments? <Ignored>
+Directive ::= <"@"> <Ignored> Name <Ignored> Arguments? <Ignored>
+
 
 # Arguments Section
 Arguments ::= <"("> <Ignored> Argument+ <Ignored> <")"> <Ignored>
 Argument ::= Name <Ignored> <":"> <Ignored> Value <Ignored>
 
-## SelectionSet & Selection
-SelectionSet ::= <"{"> <Ignored> Selection+ <"}"> <Ignored>
+
+# SelectionSet Section
+SelectionSet ::= <"{"> <Ignored> Selection+ <Ignored> <"}"> <Ignored>
 Selection ::= Field <Ignored> | FragmentSpread <Ignored> | InlineFragment <Ignored>
 
-## Field
-Field ::= Alias? <Ignored> FieldName <Ignored> Arguments? <Ignored> Directives? SelectionSet?
-Alias ::= Name <":">
-FieldName ::= Name
 
-## FragmentSpread
-FragmentSpread ::= <"..."> FragmentName <Ignored> Directives?
-FragmentName ::= Name
+# Field Section
+Field ::= Alias? <Ignored> Name <Ignored> Arguments? <Ignored> Directives? SelectionSet?
+Alias ::= Name <Ignored> <":"> <Ignored>
 
-## InlineFragment
-InlineFragment ::= <"..."> <Ignored> TypeCondition? Directives? SelectionSet?
 
-## TypeCondition
-TypeCondition ::= <"on"> <Ignored> TypeName <Ignored>
+# FragmentSpread Section
+FragmentSpread     ::= <"..."> <Ignored> FragmentName <Ignored> Directives? <Ignored>
+FragmentDefinition ::= <"fragment"> <Ignored> FragmentName <Ignored> TypeCondition <Ignored> Directives? <Ignored> SelectionSet <Ignored>
+FragmentName       ::= Name # but not <"on">
+TypeCondition      ::= <"on"> <Ignored> NamedType <Ignored>
 
-## Ignored
-Ignored ::= Ignore*
-Ignore ::= UnicodeBOM | WhiteSpace | LineTerminator | Comment | Comma
-UnicodeBOM ::= "\uFEFF"
-WhiteSpace ::= #"[\x{9}\x{20}]"   ### ASCII: \t | Space
+
+# InlineFragment Section
+InlineFragment ::= <"..."> <Ignored> TypeCondition? <Ignored> Directives? <Ignored> SelectionSet? <Ignored>
+
+
+# Ignored Section
+Ignored        ::= Ignore*
+Ignore         ::= UnicodeBOM | WhiteSpace | LineTerminator | Comment | Comma
+UnicodeBOM     ::= "\uFEFF"
+WhiteSpace     ::= #"[\x{9}\x{20}]"   ### ASCII: \t | Space
 LineTerminator ::= #"\x{A}" | #"\x{D}\x{A}" | #"\x{D}"   ### ASCII: \n | \r\n | \r 
-Comment ::= "#" CommentChar* <LineTerminator>
-Comma ::= ","
-CommentChar ::= #"[\x{9}\x{20}-\uFFFF]"
+Comment        ::= "#" CommentChar* <LineTerminator>
+Comma          ::= ","
+CommentChar    ::= #"[\x{9}\x{20}-\uFFFF]"
 
-
-
-# FragmentDefinition Section
-
-## FragmentDefinition
-FragmentDefinition ::= <"fragment"> <Ignored> FragmentName <Ignored> TypeCondition Directives? SelectionSet
