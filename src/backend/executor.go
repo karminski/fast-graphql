@@ -49,7 +49,7 @@ func DecodeVariables(inputVariables string) (map[string]interface{}, error) {
 
 // get field name string from Field in AST
 func getFieldName(field *frontend.Field) string {
-    return field.FieldName.Name.Value
+    return field.Name.Value
 }
 
 func Execute(request Request) (*Result) {
@@ -99,7 +99,7 @@ func getSelectionSetFields(selectionSet *frontend.SelectionSet) map[string]*fron
     selections := selectionSet.GetSelections()
     for _, selection := range selections {
         field := selection.(*frontend.Field)
-        fieldName := field.FieldName.Name.Value
+        fieldName := field.Name.Value
         fields[fieldName] = field
     }
     return fields

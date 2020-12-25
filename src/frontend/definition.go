@@ -33,18 +33,18 @@ func (typeSystemDefinition *TypeSystemDefinition) GetDefinitionType() string {
 
 
 /**
- * EnumTypeDefinition
- * EnumDefinition ::= Description? <"enum"> <Ignored> TypeName <Ignored> Directives? <Ignored> <"{"> EnumValuesDefinition <"}"> <Ignored>
- * EnumValuesDefinition ::= EnumValueDefinition+
- * EnumValueDefinition ::= Description? <Ignored> EnumValue <Ignored> Directives? 
- * EnumValue ::= Name
+ * EnumTypeDefinition        ::= Description? Ignored "enum" Ignored Name Ignored Directives? Ignored EnumValuesDefinition? Ignored
+ * EnumValuesDefinition      ::= "{" Ignored EnumValueDefinition+ Ignored "}" Ignored
+ * EnumValueDefinition       ::= Description? Ignored EnumValue Ignored Directives? Ignored
+ * EnumTypeExtension         ::= "extend" Ignored "enum" Ignored Name Ignored Directives? Ignored EnumValuesDefinition Ignored | "extend" Ignored "enum" Ignored Name Ignored Directives Ignored
+ *
  */
 type EnumTypeDefinition struct {
-    LineNum        int 
-    Name          *Name
-    Description    StringValue
-    Directives  []*Directive
-    Values      []*EnumValueDefinition
+    LineNum                 int 
+    Name                   *Name
+    Description             StringValue
+    Directives           []*Directive
+    EnumValuesDefinition []*EnumValueDefinition
 }
 
 func (enumTypeDefinition EnumTypeDefinition) GetDefinitionType() string {
@@ -54,8 +54,15 @@ func (enumTypeDefinition EnumTypeDefinition) GetDefinitionType() string {
 type EnumValueDefinition struct {
     LineNum        int
     Description    StringValue 
-    Value         *Name
+    EnumValue      EnumValue
     Directives  []*Directive
+}
+
+type EnumTypeExtension struct {
+    LineNum                 int
+    Name                   *Name
+    Directives           []*Directive
+    EnumValuesDefinition []*EnumValueDefinition
 }
 
 
@@ -68,7 +75,8 @@ const OperationDefinitionType = "OperationDefinition"
 
 type OperationDefinition struct {
     LineNum                int
-    OperationType         *OperationType
+    OperationType          int
+    OperationTypeName      string
     Name                  *Name
     VariableDefinitions []*VariableDefinition
     Directives          []*Directive
@@ -81,32 +89,26 @@ const (
     OperationTypeSubscription = "subscription"
 )
 
-type OperationType struct {
-    LineNum       int 
-    OperationName string // anonymous operation if Token is empty.
-    Operation     int
-}
-
 func (operationDefinition *OperationDefinition) GetDefinitionType() string {
     return OperationDefinitionType
 }
 
 func (operationDefinition *OperationDefinition) IsQuery() bool {
-    if operationDefinition.OperationType.Operation == TOKEN_QUERY {
+    if operationDefinition.OperationType == TOKEN_QUERY {
         return true
     }
     return false
 }
 
 func (operationDefinition *OperationDefinition) IsMutation() bool {
-    if operationDefinition.OperationType.Operation == TOKEN_MUTATION {
+    if operationDefinition.OperationType == TOKEN_MUTATION {
         return true
     }
     return false
 }
 
 func (operationDefinition *OperationDefinition) IsSubscription() bool {
-    if operationDefinition.OperationType.Operation == TOKEN_SUBSCRIPTION {
+    if operationDefinition.OperationType == TOKEN_SUBSCRIPTION {
         return true
     }
     return false
@@ -121,12 +123,6 @@ type Name struct {
     LineNum int
     Value   string
 }
-
-type FieldDefinition struct {
-    LineNum     int 
-    TokenName   string
-}
-
 
 type VariableDefinition struct {
     LineNum        int 
@@ -362,7 +358,7 @@ func (inlineFragment *InlineFragment) GetSelectionSet() *SelectionSet {
 
 type TypeCondition struct {
     LineNum     int
-    TypeName    *TypeName
+    NamedType  *Name
 }
 
 
@@ -390,9 +386,10 @@ type SchemaExtension struct {
  *
  */
 type OperationTypeDefinition struct {
-    LineNum         int 
-    OperationType  *OperationType
-    NamedType      *NamedType
+    LineNum            int 
+    OperationType      int
+    OperationTypeName  string 
+    NamedType         *Name
 }
 
 
@@ -449,9 +446,8 @@ type ObjectTypeExtension struct {
  *
  */
 type ImplementsInterfaces struct {
-    LineNum                 int 
-    ImplementsInterfaces     ImplementsInterfaces
-    NamedType               *NamedType
+    LineNum       int 
+    NamedTypes []*Name
 }
 
 
@@ -491,9 +487,8 @@ type UnionTypeDefinition struct {
 }
 
 type UnionMemberTypes struct {
-    LineNum           int
-    UnionMemberTypes  UnionMemberTypes
-    NamedType        *NamedType
+    LineNum       int
+    NamedTypes []*Name
 }
 
 type UnionTypeExtension struct {
@@ -542,12 +537,12 @@ type DirectiveDefinition struct {
     Description            StringValue
     Name                  *Name 
     ArgumentsDefinition []*InputValueDefinition
-    DirectiveLocations     DirectiveLocations
+    DirectiveLocations  []string
 }
 
-type DirectiveLocations []*DirectiveLocation
+type DirectiveLocations []string
 
-type DirectiveLocation     string
+type DirectiveLocation string
 
 
 /**

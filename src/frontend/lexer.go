@@ -99,7 +99,7 @@ var tokenNameMap = map[int]string{
     TOKEN_ENUM          : "enum",
     TOKEN_INPUT         : "input",
     TOKEN_DIRECTIVE     : "directive",
-    TOKEN_IMPLEMENTS    : "implements"
+    TOKEN_IMPLEMENTS    : "implements",
     TOKEN_EXTEND        : "extend",
     TOKEN_SCALAR        : "scalar",
     TOKEN_TRUE          : "true",
