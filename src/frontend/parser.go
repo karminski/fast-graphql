@@ -657,7 +657,10 @@ func parseListValue(lexer *Lexer) (ListValue, error) {
     // "["
     lexer.NextTokenIs(TOKEN_LEFT_BRACKET)
     // Value+
-    for lexer.LookAhead() != TOKEN_RIGHT_BRACKET {
+    for {
+        if lexer.LookAhead() == TOKEN_RIGHT_BRACKET {
+            break
+        }
         var value Value 
         var err   error
         if value, err = parseValue(lexer); err != nil {
@@ -678,7 +681,10 @@ func parseObjectValue(lexer *Lexer) (ObjectValue, error) {
     // "{"
     lexer.NextTokenIs(TOKEN_LEFT_BRACE)
     // ObjectField+
-    for lexer.LookAhead() != TOKEN_RIGHT_BRACE {
+    for {
+        if lexer.LookAhead() == TOKEN_RIGHT_BRACE {
+            break
+        }
         var objectField *ObjectField
         var err          error
         if objectField, err = parseObjectField(lexer); err != nil {
@@ -727,7 +733,10 @@ func parseVariableDefinitions(lexer *Lexer) ([]*VariableDefinition, error) {
     // "("
     lexer.NextTokenIs(TOKEN_LEFT_PAREN) 
     // VariableDefinition+
-    for lexer.LookAhead() != TOKEN_RIGHT_PAREN {
+    for {
+        if lexer.LookAhead() == TOKEN_RIGHT_PAREN {
+            break
+        }
         var variableDefinition *VariableDefinition
         var err                 error
         if variableDefinition, err = parseVariableDefinition(lexer); err != nil {
@@ -836,7 +845,10 @@ func parseListType(lexer *Lexer) (ListType, error) {
     // "["
     lexer.NextTokenIs(TOKEN_LEFT_BRACKET) 
     // Type+
-    for lexer.LookAhead() != TOKEN_RIGHT_BRACKET {
+    for {
+        if lexer.LookAhead() == TOKEN_RIGHT_BRACKET {
+            break
+        } 
         var typeRet Type
         var err     error
         if typeRet, err = parseType(lexer); err != nil {
@@ -916,15 +928,10 @@ func parseTypeSystemDefinition(lexer *Lexer) (Definition, error) {
     fmt.Printf("\033[31m[INTO] func parseTypeSystemDefinition  \033[0m\n")
 
     var description StringValue 
-    var err         error
 
     // Description
-    nextToken := lexer.LookAhead()
-    if nextToken == TOKEN_QUOTE || nextToken == TOKEN_DUOQUOTE ||  nextToken == TOKEN_TRIQUOTE || nextToken == TOKEN_HEXQUOTE {
-        if description, err = parseDescription(lexer); err != nil {
-            return nil, err
-        }
-    }
+    description, _ = parseDescription(lexer)
+
     // SchemaDefinition | TypeDefinition | DirectiveDefinition
     switch lexer.LookAhead() {
     case TOKEN_QUOTE:
@@ -1463,7 +1470,10 @@ func parseEnumValuesDefinition(lexer *Lexer) ([]*EnumValueDefinition, error) {
     // "{"
     lexer.NextTokenIs(TOKEN_LEFT_BRACE)
     // enumValuesDefinition+
-    for lexer.LookAhead() == TOKEN_RIGHT_BRACE { 
+    for {
+        if lexer.LookAhead() == TOKEN_RIGHT_BRACE {
+            break
+        } 
         var enumValueDefinition    *EnumValueDefinition
         var err           error
         if enumValueDefinition, err = parseEnumValueDefinition(lexer); err != nil {
@@ -1484,7 +1494,8 @@ func parseEnumValueDefinition(lexer *Lexer) (*EnumValueDefinition, error) {
 
     // LineNum
     enumValueDefinition.LineNum = lexer.GetLineNum()
-    // Description? finished at parseTypeSystemDefinition()
+    // Description?
+    enumValueDefinition.Description, _ = parseDescription(lexer) // this error can ignore
     // EnumValue
     if enumValueDefinition.EnumValue, err = parseEnumValue(lexer); err != nil {
         return nil, err
@@ -1573,7 +1584,10 @@ func parseInputFieldsDefinition(lexer *Lexer) ([]*InputValueDefinition, error) {
     // "{"
     lexer.NextTokenIs(TOKEN_LEFT_BRACE)
     // InputValueDefinition+
-    for lexer.LookAhead() == TOKEN_RIGHT_BRACE { 
+    for {
+        if lexer.LookAhead() == TOKEN_RIGHT_BRACE {
+            break
+        } 
         var inputValueDefinition *InputValueDefinition
         var err                   error
         if inputValueDefinition, err = parseInputValueDefinition(lexer); err != nil {
@@ -1737,7 +1751,10 @@ func parseFieldsDefinition(lexer *Lexer) (FieldsDefinition, error) {
     // "{"
     lexer.NextTokenIs(TOKEN_LEFT_BRACE)
     // FieldDefinition+
-    for lexer.LookAhead() == TOKEN_RIGHT_BRACE { 
+    for {
+        if lexer.LookAhead() == TOKEN_RIGHT_BRACE {
+            break
+        } 
         var fieldDefinition *FieldDefinition
         var err              error
         if fieldDefinition, err = parseFieldDefinition(lexer); err != nil {
@@ -1799,7 +1816,10 @@ func parseArgumentsDefinition(lexer *Lexer) (ArgumentsDefinition, error) {
     // "("
     lexer.NextTokenIs(TOKEN_LEFT_PAREN)
     // FieldDefinition+
-    for lexer.LookAhead() == TOKEN_RIGHT_PAREN { 
+    for {
+        if lexer.LookAhead() == TOKEN_RIGHT_PAREN {
+            break
+        } 
         var inputValueDefinition *InputValueDefinition
         var err              error
         if inputValueDefinition, err = parseInputValueDefinition(lexer); err != nil {
