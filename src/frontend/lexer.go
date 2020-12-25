@@ -25,6 +25,7 @@ const (
     TOKEN_EQUAL               // =
     TOKEN_AT                  // @
     TOKEN_AND                 // &
+    TOKEN_VERTICAL_BAR        // |
 	TOKEN_QUOTE         	  // "
 	TOKEN_DUOQUOTE 			  // ""
 	TOKEN_TRIQUOTE      	  // """
@@ -56,6 +57,7 @@ const (
     TOKEN_ENUM                  // enum
     TOKEN_INPUT                 // input
     TOKEN_DIRECTIVE             // directive
+    TOKEN_IMPLEMENTS            // implements
     TOKEN_EXTEND                // extend
     TOKEN_SCALAR                // scalar
     TOKEN_TRUE                  // true
@@ -79,6 +81,7 @@ var tokenNameMap = map[int]string{
     TOKEN_EQUAL         : "=",
     TOKEN_AT            : "@",
     TOKEN_AND           : "&",
+    TOKEN_VERTICAL_BAR  : "|",
 	TOKEN_QUOTE         : "\"",
 	TOKEN_DUOQUOTE 		: "\"\"",
 	TOKEN_TRIQUOTE      : "\"\"\"",
@@ -96,6 +99,7 @@ var tokenNameMap = map[int]string{
     TOKEN_ENUM          : "enum",
     TOKEN_INPUT         : "input",
     TOKEN_DIRECTIVE     : "directive",
+    TOKEN_IMPLEMENTS    : "implements"
     TOKEN_EXTEND        : "extend",
     TOKEN_SCALAR        : "scalar",
     TOKEN_TRUE          : "true",
@@ -116,6 +120,7 @@ var keywords = map[string]int{
     "enum"         : TOKEN_ENUM,
     "input"        : TOKEN_INPUT,
     "directive"    : TOKEN_DIRECTIVE,
+    "implements"   : TOKEN_IMPLEMENTS,
     "extend"       : TOKEN_EXTEND,
     "scalar"       : TOKEN_SCALAR,
     "true"         : TOKEN_TRUE,
@@ -196,7 +201,7 @@ func (lexer *Lexer) skipDocument(n int) {
     lexer.document = lexer.document[n:]
 }
 
-func (lexer *Lexer) skipWhiteSpace() {
+func (lexer *Lexer) skipIgnored() {
     // target pattern
     isNewLine := func(c byte) bool {
         return c == '\r' || c == '\n'
@@ -280,7 +285,7 @@ func (lexer *Lexer) GetNextToken() (lineNum int, tokenType int, token string) {
 
 func (lexer *Lexer) MatchToken() (lineNum int, tokenType int, token string) {
     // skip spaces
-    lexer.skipWhiteSpace()
+    lexer.skipIgnored()
     // finish
     if len(lexer.document) == 0 {
         return lexer.lineNum, TOKEN_EOF, tokenNameMap[TOKEN_EOF]

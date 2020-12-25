@@ -69,7 +69,7 @@ const OperationDefinitionType = "OperationDefinition"
 type OperationDefinition struct {
     LineNum                int
     OperationType         *OperationType
-    OperationName         *OperationName
+    Name                  *Name
     VariableDefinitions []*VariableDefinition
     Directives          []*Directive
     SelectionSet          *SelectionSet
@@ -122,38 +122,18 @@ type Name struct {
     Value   string
 }
 
-/**
- * OperationName Definitation
- * OperationName ::= Name
- */
-
-type OperationName struct {
-    LineNum int 
-    Name    *Name
-}
-
 type FieldDefinition struct {
     LineNum     int 
     TokenName   string
 }
 
-/**
- * VariableDefinitions ::= <"("> VariableDefinition+ <")">
- * VariableDefinition ::= <Ignored> VariableName <":"> <Ignored> Type <Ignored> DefaultValue? <Ignored>
- */
 
 type VariableDefinition struct {
     LineNum        int 
     Variable      *Name
     Type           Type
-    DefaultValue  *DefaultValue
+    DefaultValue   Value
 }
-
-type VariableName struct {
-    LineNum int 
-    Name    *Name
-}
-
 
 
 /**
@@ -172,19 +152,11 @@ var _ Type = (*NamedType)(nil)
 var _ Type = (*ListType)(nil)
 var _ Type = (*NonNullType)(nil)
 
-type TypeName struct {
-    LineNum    int 
-    Name       *Name
-}
-
-type NamedType struct {
-    LineNum     int 
-    Name        *Name
-}
+type NamedType Name
 
 type ListType struct {
     LineNum     int
-    Type        Type
+    Type        []Type
 }
 
 type NonNullType struct {
@@ -202,21 +174,6 @@ type DefaultValue struct {
     Value      Value
 }
 
-
-/**
- * Value Definition
- * Value ::= VariableName | IntValue | FloatValue | ListValue | StringValue | BooleanValue | EnumValue | ObjectValue
- * VariableName ::=  
- * IntValue ::= #"[\+\-0-9]+"
- * FloatValue ::= #"[\+\-0-9]+\.[0-9]"
- * ListValue ::= <"["> <"]"> | <"["> OneOrMoreValue <"]">
- * OneOrMoreValue ::= [Value <Ignored>]+
- * StringValue ::= <"\""><"\""> | <"\""> StringCharacter+ <"\"">
- * StringCharacter ::= #"[\x{9}\x{20}\x{21}\x{23}-\x{5B}\x{5D}-\uFFFF]" | "\\" "u" EscapedUnicode | "\\" EscapedCharacter
- * BooleanValue ::= "true" | "false"
- * EnumValue ::= #"(?!(true|false|null))[_A-Za-z][_0-9A-Za-z]*"
- * ObjectValue ::= <"{"> ObjectField <"}">
- */
 
 type Value interface {
 }
@@ -261,7 +218,7 @@ type NullValue struct {
 
 type EnumValue struct {
     LineNum int 
-    Value   string
+    Value   *Name
 }
 
 type ListValue struct {
@@ -345,7 +302,7 @@ var _ Selection = (*InlineFragment)(nil)
 type Field struct {
     LineNum         int
     Alias           *Alias
-    FieldName       *FieldName
+    Name            *Name
     Arguments       []*Argument
     Directives      []*Directive
     SelectionSet    *SelectionSet
@@ -356,11 +313,6 @@ func (field *Field) GetSelectionSet() *SelectionSet {
 }
 
 type Alias struct {
-    LineNum    int 
-    Name       *Name
-}
-
-type FieldName struct {
     LineNum    int 
     Name       *Name
 }
@@ -381,7 +333,6 @@ type FragmentSpread struct {
     Directives []*Directive
 }
 
-// FragmentSpread does not have SelectionSet section.
 func (fragmentSpread *FragmentSpread) GetSelectionSet() *SelectionSet {
     return nil 
 }
@@ -398,11 +349,6 @@ func (fragmentDefinition *FragmentDefinition) GetDefinitionType() string {
     return FragmentDefinitionType
 }
 
-
-/**
- * # InlineFragment Section
- * InlineFragment ::= <"..."> <Ignored> TypeCondition? <Ignored> Directives? <Ignored> SelectionSet? <Ignored>
- */
 type InlineFragment struct {
     LineNum          int 
     TypeCondition    *Name
@@ -414,16 +360,229 @@ func (inlineFragment *InlineFragment) GetSelectionSet() *SelectionSet {
     return inlineFragment.SelectionSet
 }
 
-
-/**
- * ## TypeCondition
- * TypeCondition ::= <"on"> <Ignored> TypeName <Ignored>
- */
-
 type TypeCondition struct {
     LineNum     int
     TypeName    *TypeName
 }
 
 
+/**
+ * SchemaDefinition Expression 
+ * SchemaDefinition ::= "schema" Ignored Directives? Ignored "{" Ignored OperationTypeDefinition+ Ignored "}" Ignored
+ * SchemaExtension  ::= "extend" Ignored "schema" Directives? Ignored "{" Ignored OperationTypeDefinition+ Ignored "}" Ignored | "extend" Ignored "schema" Directives Ignored
+ *
+ */
+type SchemaDefinition struct {
+    LineNum                    int 
+    Directives              []*Directive
+    OperationTypeDefinition    OperationTypeDefinition
+}
+
+type SchemaExtension struct {
+    LineNum                    int 
+    Directives              []*Directive 
+    OperationTypeDefinition    OperationTypeDefinition
+}
+
+/**
+ * OperationTypeDefinition Expression 
+ * OperationTypeDefinition ::= OperationType Ignored ":" Ignored NamedType Ignored
+ *
+ */
+type OperationTypeDefinition struct {
+    LineNum         int 
+    OperationType  *OperationType
+    NamedType      *NamedType
+}
+
+
+/**
+ * TypeDefinition Expression 
+ * TypeDefinition            ::= ScalarTypeDefinition | ObjectTypeDefinition | InterfaceTypeDefinition | UnionTypeDefinition | EnumTypeDefinition | InputObjectTypeDefinition
+ * TypeExtension             ::= ScalarTypeExtension | ObjectTypeExtension | InterfaceTypeExtension | UnionTypeExtension | EnumTypeExtension | InputObjectTypeExtension
+ *
+ */
+
+
+/**
+ * ScalarTypeDefinition      ::= Description? Ignored "scalar" Ignored Name Ignored Directives? Ignored
+ * ScalarTypeExtension       ::= "extend" Ignored "scalar" Ignored Name Ignored Directives Ignored
+ *
+ */
+type ScalarTypeDefinition struct {
+    LineNum       int 
+    Description   StringValue
+    Name         *Name 
+    Directives []*Directive
+}
+
+type ScalarTypeExtension struct {
+    LineNum       int 
+    Name         *Name 
+    Directives []*Directive
+}
+
+/**
+ * ObjectTypeDefinition      ::= Description? Ignored "type" Ignored Name Ignored ImplementsInterfaces? Ignored Directives? Ignored FieldsDefinition? gnored
+ * ObjectTypeExtension       ::= "extend" Ignored "type" Ignored Name Ignored ImplementsInterfaces? Ignored Directives? Ignored FieldsDefinition Ignored | "extend" Ignored "type" Ignored Name Ignored ImplementsInterfaces? Ignored Directives Ignored | "extend" Ignored "type" Ignored Name Ignored ImplementsInterfaces Ignored
+ *
+ */
+type ObjectTypeDefinition struct {
+    LineNum                 int 
+    Name                   *Name 
+    ImplementsInterfaces    ImplementsInterfaces
+    Directives           []*Directive
+    FieldsDefinition        FieldsDefinition
+}
+
+type ObjectTypeExtension struct {
+    LineNum                 int 
+    Name                   *Name 
+    ImplementsInterfaces    ImplementsInterfaces
+    Directives           []*Directive
+    FieldsDefinition        FieldsDefinition
+}
+
+
+/**
+ * ImplementsInterfaces      ::= "implements" Ignored "&"? Ignored NamedType Ignored | ImplementsInterfaces Ignored "&" Ignored NamedType Ignored
+ *
+ */
+type ImplementsInterfaces struct {
+    LineNum                 int 
+    ImplementsInterfaces     ImplementsInterfaces
+    NamedType               *NamedType
+}
+
+
+/**
+ * InterfaceTypeDefinition   ::= Description? Ignored "interface" Ignored Name Ignored Directives? Ignored FieldsDefinition? Ignored
+ * InterfaceTypeExtension    ::= "extend" Ignored "interface" Ignored Name Ignored Directives? Ignored FieldsDefinition Ignored | "extend" Ignored "interface" Ignored Name Ignored Directives Ignored 
+ *
+ */
+type InterfaceTypeDefinition struct {
+    LineNum             int 
+    Description         StringValue
+    Name               *Name 
+    Directives       []*Directive
+    FieldsDefinition    FieldsDefinition
+}
+
+type InterfaceTypeExtension struct {
+    LineNum             int 
+    Name               *Name 
+    Directives       []*Directive
+    FieldsDefinition    FieldsDefinition
+}
+
+
+/**
+ * UnionTypeDefinition       ::= Description? Ignored "union" Ignored Name Ignored Directives? Ignored UnionMemberTypes? Ignored
+ * UnionMemberTypes          ::= "=" Ignored "|"? Ignored NamedType Ignored | UnionMemberTypes Ignored "|" Ignored NamedType Ignored
+ * UnionTypeExtension        ::= "extend" Ignored "union" Ignored Name Ignored Directives? Ignored UnionMemberTypes? Ignored | "extend" Ignored "union" Ignored Name Ignored Directives Ignored
+ *
+ */
+type UnionTypeDefinition struct {
+    LineNum             int
+    Description         StringValue
+    Name               *Name 
+    Directives       []*Directive
+    UnionMemberTypes    UnionMemberTypes
+}
+
+type UnionMemberTypes struct {
+    LineNum           int
+    UnionMemberTypes  UnionMemberTypes
+    NamedType        *NamedType
+}
+
+type UnionTypeExtension struct {
+    LineNum             int
+    Name               *Name
+    Directives       []*Directive
+    UnionMemberTypes    UnionMemberTypes
+}
+
+
+/**
+ * InputObjectTypeDefinition ::= Description? Ignored "input" Ignored Name Ignored Directives? Ignored InputFieldsDefinition? Ignored
+ * InputFieldsDefinition     ::= "{" Ignored InputValueDefinition+ Ignored "}" Ignored
+ * InputObjectTypeExtension  ::= "extend" Ignored "input" Ignored Name Ignored Directives? Ignored InputFieldsDefinition Ignored | "extend" Ignored "input" Ignored Name Ignored Directives Ignored 
+ *
+ */
+type InputObjectTypeDefinition struct {
+    LineNum                  int
+    Description              StringValue
+    Name                    *Name 
+    Directives            []*Directive
+    InputFieldsDefinition    InputFieldsDefinition
+}
+
+type InputFieldsDefinition []*InputValueDefinition
+
+type InputObjectTypeExtension struct {
+    LineNum                   int
+    Name                     *Name
+    Directives             []*Directive
+    InputFieldsDefinition     InputFieldsDefinition
+}
+
+
+/**
+ * DirectiveDefinition Expression 
+ * DirectiveDefinition         ::= Description? Ignored "directive" Ignored "@" Ignored Name Ignored ArgumentsDefinition? Ignored "on" Ignored DirectiveLocations Ignored
+ * DirectiveLocations          ::= "|"? Ignored DirectiveLocation Ignored | DirectiveLocations Ignored "|" Ignored DirectiveLocation Ignored
+ * DirectiveLocation           ::= ExecutableDirectiveLocation | TypeSystemDirectiveLocation
+ * ExecutableDirectiveLocation ::= "QUERY" | "MUTATION" | "SUBSCRIPTION" | "FIELD" | "FRAGMENT_DEFINITION" | "FRAGMENT_SPREAD" | "INLINE_FRAGMENT" 
+ * TypeSystemDirectiveLocation ::= "SCHEMA" | "SCALAR" | "OBJECT" | "FIELD_DEFINITION" | "ARGUMENT_DEFINITION" | "INTERFACE" | "UNION" | "ENUM" | "ENUM_VALUE" | "INPUT_OBJECT" | "INPUT_FIELD_DEFINITION" 
+ *
+ */
+type DirectiveDefinition struct {
+    LineNum                int
+    Description            StringValue
+    Name                  *Name 
+    ArgumentsDefinition []*InputValueDefinition
+    DirectiveLocations     DirectiveLocations
+}
+
+type DirectiveLocations []*DirectiveLocation
+
+type DirectiveLocation     string
+
+
+/**
+ * FieldsDefinition Expression
+ * FieldsDefinition ::= "{" Ignored FieldDefinition+ Ignored "}"
+ * FieldDefinition  ::= Description? Ignored Name Ignored ArgumentsDefinition? Ignored ":" Ignored Type Ignored Directives? Ignored
+ *
+ */
+type FieldsDefinition []*FieldDefinition
+
+type FieldDefinition struct {
+    LineNum                int
+    Description            StringValue
+    Name                  *Name 
+    ArgumentsDefinition []*InputValueDefinition
+    Type                   Type
+    Directives          []*Directive
+}
+
+
+/**
+ * ArgumentsDefinition Expression 
+ * ArgumentsDefinition  ::= "(" Ignored InputValueDefinition+ Ignored ")" Ignored
+ * InputValueDefinition ::= Description? Ignored Name Ignored ":" Ignored Type Ignored DefaultValue? Ignored Directives? Ignored
+ *
+ */
+
+type ArgumentsDefinition []*InputValueDefinition
+
+type InputValueDefinition struct {
+    LineNum         int 
+    Description     StringValue
+    Name           *Name 
+    Type            Type
+    DefaultValue    Value
+    Directives   []*Directive
+}
 
