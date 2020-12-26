@@ -48,7 +48,7 @@ func parseName(lexer *Lexer) (*Name, error) {
             b >= '0' && b <= '9' ){
             continue
         } else {
-            err := fmt.Sprintf("line %d: unexpected symbol near '%v', it is not a GraphQL name expression", lineNum, token)
+            err := fmt.Sprintf("parseName(): line %d: unexpected symbol near '%v', it is not a GraphQL name expression", lineNum, token)
             return nil, errors.New(err)
         }
     }
@@ -154,9 +154,11 @@ func parseDefinitions(lexer *Lexer) ([]Definition, error) {
 }
 
 func parseDefinition(lexer *Lexer) (Definition, error) {
-    // parse OperationType and OperationName
     switch lexer.LookAhead() {
-    // type system definitation
+    /**
+     * Definition: 
+     *     TypeSystemDefinition
+     */
     case TOKEN_QUOTE:
         return parseTypeSystemDefinition(lexer)
     case TOKEN_DUOQUOTE:
@@ -167,13 +169,13 @@ func parseDefinition(lexer *Lexer) (Definition, error) {
         return parseTypeSystemDefinition(lexer)
     case TOKEN_IDENTIFIER:
         return parseTypeSystemDefinition(lexer)
+    case TOKEN_SCHEMA:
+        return parseTypeSystemDefinition(lexer)
     case TOKEN_TYPE:
         return parseTypeSystemDefinition(lexer)
     case TOKEN_INTERFACE:
         return parseTypeSystemDefinition(lexer)
     case TOKEN_UNION:
-        return parseTypeSystemDefinition(lexer)
-    case TOKEN_SCHEMA:
         return parseTypeSystemDefinition(lexer)
     case TOKEN_ENUM:
         return parseTypeSystemDefinition(lexer)
@@ -181,11 +183,18 @@ func parseDefinition(lexer *Lexer) (Definition, error) {
         return parseTypeSystemDefinition(lexer)
     case TOKEN_DIRECTIVE:
         return parseTypeSystemDefinition(lexer)
-    case TOKEN_EXTEND:
-        return parseTypeSystemDefinition(lexer)
     case TOKEN_SCALAR:
         return parseTypeSystemDefinition(lexer)
-    // operation definitation
+    /**
+     * Definition:
+     *     TypeSystemExtension
+     */
+    case TOKEN_EXTEND:
+        return parseTypeSystemExtension(lexer)
+    /**
+     * ExecutableDefinition: 
+     *     OperationDefinition
+     */
     case TOKEN_LEFT_BRACE:
         return parseOperationDefinition(lexer)
     case TOKEN_QUERY:
@@ -194,11 +203,13 @@ func parseDefinition(lexer *Lexer) (Definition, error) {
         return parseOperationDefinition(lexer)
     case TOKEN_SUBSCRIPTION:
         return parseOperationDefinition(lexer)
-    // fragment definitation
+    /**
+     * ExecutableDefinition:
+     *     FragmentDefinition
+     */
     case TOKEN_FRAGMENT:
         return parseFragmentDefinition(lexer)
     default:
-        // return parseQueryShorthandDefinition(lexer)
         return nil, nil
     }
 }
@@ -917,11 +928,7 @@ func parseDirective(lexer *Lexer) (*Directive, error) {
  * TypeSystemDefinition ::= SchemaDefinition | TypeDefinition | DirectiveDefinition
  * TypeSystemExtension  ::= SchemaExtension | TypeExtension
  *
- * Description Expression 
- * Description ::= StringValue
- * 
  */
-// @todo: unfinished
 func parseTypeSystemDefinition(lexer *Lexer) (Definition, error) {
     fmt.Printf("\033[31m[INTO] func parseTypeSystemDefinition  \033[0m\n")
 
@@ -930,18 +937,20 @@ func parseTypeSystemDefinition(lexer *Lexer) (Definition, error) {
     // Description
     description, _ = parseDescription(lexer)
 
-    // SchemaDefinition | TypeDefinition | DirectiveDefinition
+    /**
+     * TypeSystemDefinition:
+     *     SchemaDefinition | TypeDefinition | DirectiveDefinition
+     */
     switch lexer.LookAhead() {
-    case TOKEN_QUOTE:
-        return parseTypeSystemDefinition(lexer)
-    case TOKEN_DUOQUOTE:
-        return parseTypeSystemDefinition(lexer)
-    case TOKEN_TRIQUOTE:
-        return parseTypeSystemDefinition(lexer)
-    case TOKEN_HEXQUOTE:
-        return parseTypeSystemDefinition(lexer)
-    case TOKEN_IDENTIFIER:
-        return parseTypeSystemDefinition(lexer)
+    /**
+     * SchemaDefinition:
+     */
+    case TOKEN_SCHEMA:
+        return parseSchemaDefinition(lexer)
+    /** 
+     * TypeDefinition: 
+     *     ScalarTypeDefinition | ObjectTypeDefinition | InterfaceTypeDefinition | UnionTypeDefinition | EnumTypeDefinition | InputObjectTypeDefinition
+     */
     case TOKEN_SCALAR:
         var scalarTypeDefinition *ScalarTypeDefinition
         var err error
@@ -990,23 +999,61 @@ func parseTypeSystemDefinition(lexer *Lexer) (Definition, error) {
         }
         inputObjectTypeDefinition.Description = description
         return inputObjectTypeDefinition, nil  
-    case TOKEN_SCHEMA:
-        return parseTypeSystemDefinition(lexer)
+    /**
+     * DirectiveDefinition:
+     */
     case TOKEN_DIRECTIVE:
-        return parseTypeSystemDefinition(lexer)
-    case TOKEN_EXTEND:
-        return parseTypeSystemDefinition(lexer)
+        var directiveDefinition *DirectiveDefinition
+        var err error
+        if directiveDefinition, err = parseDirectiveDefinition(lexer); err != nil {
+            return nil, err
+        }
+        directiveDefinition.Description = description
+        return directiveDefinition, nil  
     default:
         return nil, nil
     }
-    // append description
-    
+    return nil, nil
 }
 
-func parseTypeSystemExtension(lexer *Lexer) {
-
+func parseTypeSystemExtension(lexer *Lexer) (Definition, error) {
+    // "extend"
+    lexer.NextTokenIs(TOKEN_EXTEND)
+    // 
+    switch lexer.LookAhead() {
+    /**
+     * SchemaExtension:
+     */
+    case TOKEN_SCHEMA:
+        return parseSchemaExtension(lexer)
+    /**
+     * TypeExtension:
+     *     ScalarTypeExtension | ObjectTypeExtension | InterfaceTypeExtension | UnionTypeExtension | EnumTypeExtension | InputObjectTypeExtension
+     */
+    case TOKEN_SCALAR:
+        return parseScalarTypeExtension(lexer)
+    case TOKEN_TYPE:
+        return parseObjectTypeExtension(lexer)
+    case TOKEN_INTERFACE:
+        return parseInterfaceTypeExtension(lexer)
+    case TOKEN_UNION:
+        return parseUnionTypeExtension(lexer)
+    case TOKEN_ENUM:
+        return parseEnumTypeExtension(lexer)
+    case TOKEN_INPUT:
+        return parseInputObjectTypeExtension(lexer)
+    default:
+        err := errors.New("parseTypeSystemExtension(): illegal TypeSystemExtension syntax")
+        return nil, err
+    }
 }
 
+
+/**
+ * Description Expression 
+ * Description ::= StringValue
+ *
+ */
 var parseDescription = parseStringValue
 
 
@@ -1019,7 +1066,7 @@ var parseDescription = parseStringValue
 func parseSchemaDefinition(lexer *Lexer) (*SchemaDefinition, error) {
     fmt.Printf("\033[31m[INTO] func parseSchemaDefinition  \033[0m\n")
 
-    var schemaDefinition *SchemaDefinition
+    var schemaDefinition SchemaDefinition
     var err              error
 
     // LineNum
@@ -1035,24 +1082,28 @@ func parseSchemaDefinition(lexer *Lexer) (*SchemaDefinition, error) {
     // "{"
     lexer.NextTokenIs(TOKEN_LEFT_BRACE)
     // OperationTypeDefinition+
-    if schemaDefinition.OperationTypeDefinition, err = parseOperationTypeDefinition(lexer); err != nil {
-        return nil, err
+    for lexer.LookAhead() != TOKEN_RIGHT_BRACE {
+        var operationTypeDefinition *OperationTypeDefinition
+        var err                      error
+        if operationTypeDefinition, err = parseOperationTypeDefinition(lexer); err != nil {
+            return nil, err
+        }
+        schemaDefinition.OperationTypeDefinitions = append(schemaDefinition.OperationTypeDefinitions, operationTypeDefinition)
     }
     // "}"
     lexer.NextTokenIs(TOKEN_RIGHT_BRACE)
-    return schemaDefinition, nil
+    return &schemaDefinition, nil
 }
 
 func parseSchemaExtension(lexer *Lexer) (*SchemaExtension, error) {
     fmt.Printf("\033[31m[INTO] func parseSchemaExtension  \033[0m\n")
 
-    var schemaExtension *SchemaExtension
-    var err              error
+    var schemaExtension SchemaExtension
+    var err             error
 
     // LineNum
     schemaExtension.LineNum = lexer.GetLineNum()
-    // "extend"
-    lexer.NextTokenIs(TOKEN_EXTEND)
+    // "extend" finished at parseTypeSystemExtension()
     // "schema"
     lexer.NextTokenIs(TOKEN_SCHEMA)
     // Directives?
@@ -1066,13 +1117,18 @@ func parseSchemaExtension(lexer *Lexer) (*SchemaExtension, error) {
         // "{"
         lexer.NextTokenIs(TOKEN_LEFT_BRACE)
         // OperationTypeDefinition+
-        if schemaExtension.OperationTypeDefinition, err = parseOperationTypeDefinition(lexer); err != nil {
-            return nil, err
+        for lexer.LookAhead() != TOKEN_RIGHT_BRACE {
+            var operationTypeDefinition *OperationTypeDefinition
+            var err                      error
+            if operationTypeDefinition, err = parseOperationTypeDefinition(lexer); err != nil {
+                return nil, err
+            }
+            schemaExtension.OperationTypeDefinitions = append(schemaExtension.OperationTypeDefinitions, operationTypeDefinition)
         }
         // "}"
         lexer.NextTokenIs(TOKEN_RIGHT_BRACE)
     }
-    return schemaExtension, nil
+    return &schemaExtension, nil
 }
 
 /**
@@ -1081,10 +1137,10 @@ func parseSchemaExtension(lexer *Lexer) (*SchemaExtension, error) {
  *
  */
 func parseOperationTypeDefinition(lexer *Lexer) (*OperationTypeDefinition, error) {
-    fmt.Printf("\033[31m[INTO] func parseSchemaExtension  \033[0m\n")
+    fmt.Printf("\033[31m[INTO] func parseOperationTypeDefinition  \033[0m\n")
 
-    var operationTypeDefinition *OperationTypeDefinition
-    var err                      error
+    var operationTypeDefinition OperationTypeDefinition
+    var err                     error
 
     // LineNum
     operationTypeDefinition.LineNum = lexer.GetLineNum()
@@ -1098,7 +1154,7 @@ func parseOperationTypeDefinition(lexer *Lexer) (*OperationTypeDefinition, error
     if operationTypeDefinition.NamedType, err = parseNamedType(lexer); err != nil {
         return nil ,err
     }
-    return operationTypeDefinition, nil
+    return &operationTypeDefinition, nil
 }
 
 
@@ -1108,15 +1164,8 @@ func parseOperationTypeDefinition(lexer *Lexer) (*OperationTypeDefinition, error
  * TypeExtension             ::= ScalarTypeExtension | ObjectTypeExtension | InterfaceTypeExtension | UnionTypeExtension | EnumTypeExtension | InputObjectTypeExtension
  *
  */
-// @todo: unfinished
-// func parseTypeDefinition(lexer *Lexer) (TypeDefinition, error) {
-// 
-// }
-// 
-// 
-// func parseTypeExtension(lexer *Lexer) (TypeExtension, error) {
-// 
-// }
+
+// Implement at parseTypeSystemDefinition
 
 /**
  * ScalarTypeDefinition      ::= Description? Ignored "scalar" Ignored Name Ignored Directives? Ignored
@@ -1155,8 +1204,7 @@ func parseScalarTypeExtension(lexer *Lexer) (*ScalarTypeExtension, error) {
 
     // LineNum
     scalarTypeExtension.LineNum = lexer.GetLineNum()
-    // "extend"
-    lexer.NextTokenIs(TOKEN_EXTEND)
+    // "extend" finished at parseTypeSystemExtension()
     // "scalar"
     lexer.NextTokenIs(TOKEN_SCALAR)
     // Name 
@@ -1173,7 +1221,9 @@ func parseScalarTypeExtension(lexer *Lexer) (*ScalarTypeExtension, error) {
 
 /**
  * ObjectTypeDefinition      ::= Description? Ignored "type" Ignored Name Ignored ImplementsInterfaces? Ignored Directives? Ignored FieldsDefinition? gnored
- * ObjectTypeExtension       ::= "extend" Ignored "type" Ignored Name Ignored ImplementsInterfaces? Ignored Directives? Ignored FieldsDefinition Ignored | "extend" Ignored "type" Ignored Name Ignored ImplementsInterfaces? Ignored Directives Ignored | "extend" Ignored "type" Ignored Name Ignored ImplementsInterfaces Ignored
+ * ObjectTypeExtension       ::= "extend" Ignored "type" Ignored Name Ignored ImplementsInterfaces? Ignored Directives? Ignored FieldsDefinition Ignored | 
+ *                               "extend" Ignored "type" Ignored Name Ignored ImplementsInterfaces? Ignored Directives Ignored | 
+ *                               "extend" Ignored "type" Ignored Name Ignored ImplementsInterfaces Ignored
  *
  */
 func parseObjectTypeDefinition(lexer *Lexer) (*ObjectTypeDefinition, error) {
@@ -1220,8 +1270,7 @@ func parseObjectTypeExtension(lexer *Lexer) (*ObjectTypeExtension, error) {
 
     // LineNum
     objectTypeExtension.LineNum = lexer.GetLineNum()
-    // "extend"
-    lexer.NextTokenIs(TOKEN_EXTEND)
+    // "extend" finished at parseTypeSystemExtension()
     // "type"
     lexer.NextTokenIs(TOKEN_TYPE)
     // Name
@@ -1241,8 +1290,10 @@ func parseObjectTypeExtension(lexer *Lexer) (*ObjectTypeExtension, error) {
         }
     }
     // FieldsDefinition
-    if objectTypeExtension.FieldsDefinition, err = parseFieldsDefinition(lexer); err != nil {
-        return nil, err
+    if lexer.LookAhead() == TOKEN_LEFT_BRACE {
+        if objectTypeExtension.FieldsDefinition, err = parseFieldsDefinition(lexer); err != nil {
+            return nil, err
+        }
     }
     return &objectTypeExtension, nil
 }
@@ -1328,8 +1379,7 @@ func parseInterfaceTypeExtension(lexer *Lexer) (*InterfaceTypeExtension, error) 
 
     // LineNum
     interfaceTypeExtension.LineNum = lexer.GetLineNum()
-    // "extend"
-    lexer.NextTokenIs(TOKEN_EXTEND)
+    // "extend" finished at parseTypeSystemExtension()
     // "interface"
     lexer.NextTokenIs(TOKEN_INTERFACE)
     // Name
@@ -1354,8 +1404,10 @@ func parseInterfaceTypeExtension(lexer *Lexer) (*InterfaceTypeExtension, error) 
 
 /**
  * UnionTypeDefinition       ::= Description? Ignored "union" Ignored Name Ignored Directives? Ignored UnionMemberTypes? Ignored
- * UnionMemberTypes          ::= "=" Ignored "|"? Ignored NamedType Ignored | UnionMemberTypes Ignored "|" Ignored NamedType Ignored
- * UnionTypeExtension        ::= "extend" Ignored "union" Ignored Name Ignored Directives? Ignored UnionMemberTypes? Ignored | "extend" Ignored "union" Ignored Name Ignored Directives Ignored
+ * UnionMemberTypes          ::= "=" Ignored "|"? Ignored NamedType Ignored | 
+ *                               UnionMemberTypes Ignored "|" Ignored NamedType Ignored
+ * UnionTypeExtension        ::= "extend" Ignored "union" Ignored Name Ignored Directives? Ignored UnionMemberTypes? Ignored | 
+ *                               "extend" Ignored "union" Ignored Name Ignored Directives Ignored
  *
  */
 
@@ -1429,8 +1481,7 @@ func parseUnionTypeExtension(lexer *Lexer) (*UnionTypeExtension, error) {
 
     // LineNum
     unionTypeExtension.LineNum = lexer.GetLineNum()
-    // "extend"
-    lexer.NextTokenIs(TOKEN_EXTEND)
+    // "extend" finished at parseTypeSystemExtension()
     // "union"
     lexer.NextTokenIs(TOKEN_UNION)
     // Name
@@ -1456,7 +1507,8 @@ func parseUnionTypeExtension(lexer *Lexer) (*UnionTypeExtension, error) {
  * EnumTypeDefinition        ::= Description? Ignored "enum" Ignored Name Ignored Directives? Ignored EnumValuesDefinition? Ignored
  * EnumValuesDefinition      ::= "{" Ignored EnumValueDefinition+ Ignored "}" Ignored
  * EnumValueDefinition       ::= Description? Ignored EnumValue Ignored Directives? Ignored
- * EnumTypeExtension         ::= "extend" Ignored "enum" Ignored Name Ignored Directives? Ignored EnumValuesDefinition Ignored | "extend" Ignored "enum" Ignored Name Ignored Directives Ignored
+ * EnumTypeExtension         ::= "extend" Ignored "enum" Ignored Name Ignored Directives? Ignored EnumValuesDefinition Ignored | 
+ *                               "extend" Ignored "enum" Ignored Name Ignored Directives Ignored
  *
  */
 func parseEnumTypeDefinition(lexer *Lexer) (*EnumTypeDefinition, error) {
@@ -1497,10 +1549,7 @@ func parseEnumValuesDefinition(lexer *Lexer) ([]*EnumValueDefinition, error) {
     // "{"
     lexer.NextTokenIs(TOKEN_LEFT_BRACE)
     // enumValuesDefinition+
-    for {
-        if lexer.LookAhead() == TOKEN_RIGHT_BRACE {
-            break
-        } 
+    for lexer.LookAhead() != TOKEN_RIGHT_BRACE {
         var enumValueDefinition    *EnumValueDefinition
         var err           error
         if enumValueDefinition, err = parseEnumValueDefinition(lexer); err != nil {
@@ -1544,8 +1593,7 @@ func parseEnumTypeExtension(lexer *Lexer) (*EnumTypeExtension, error) {
 
     // LineNum
     enumTypeExtension.LineNum = lexer.GetLineNum()
-    // "extend"
-    lexer.NextTokenIs(TOKEN_EXTEND)
+    // "extend" finished at parseTypeSystemExtension()
     // "enum"
     lexer.NextTokenIs(TOKEN_ENUM)
     // Name
@@ -1611,10 +1659,7 @@ func parseInputFieldsDefinition(lexer *Lexer) ([]*InputValueDefinition, error) {
     // "{"
     lexer.NextTokenIs(TOKEN_LEFT_BRACE)
     // InputValueDefinition+
-    for {
-        if lexer.LookAhead() == TOKEN_RIGHT_BRACE {
-            break
-        } 
+    for lexer.LookAhead() != TOKEN_RIGHT_BRACE {
         var inputValueDefinition *InputValueDefinition
         var err                   error
         if inputValueDefinition, err = parseInputValueDefinition(lexer); err != nil {
@@ -1635,8 +1680,7 @@ func parseInputObjectTypeExtension(lexer *Lexer) (*InputObjectTypeExtension, err
 
     // LineNum
     inputObjectTypeExtension.LineNum = lexer.GetLineNum()
-    // "extend"
-    lexer.NextTokenIs(TOKEN_EXTEND)
+    // "extend" finished at parseTypeSystemExtension()
     // "input"
     lexer.NextTokenIs(TOKEN_INPUT)
     // Name
@@ -1705,24 +1749,21 @@ func parseDirectiveLocations(lexer *Lexer) ([]string, error) {
     var directiveLocations []string
 
     // DirectiveLocations
-    directiveLocationCounter  := 0
     for {
         var directiveLocation string
         var err               error
         // "|"?
         if lexer.LookAhead() == TOKEN_VERTICAL_BAR {
             lexer.NextTokenIs(TOKEN_VERTICAL_BAR)
-            directiveLocationCounter --
         }
-        // DirectiveLocation
-        if directiveLocationCounter > 0 { // this means the next token is not DirectiveLocation. there will a "|" between two DirectiveLocations 
+        // not TOKEN_IDENTIFIER, finish
+        if lexer.LookAhead() != TOKEN_IDENTIFIER {
             break
         }
         if directiveLocation, err = parseDirectiveLocation(lexer); err != nil {
             return directiveLocations, err
         }
         directiveLocations = append(directiveLocations, directiveLocation)
-        directiveLocationCounter++
     }
     return directiveLocations, nil
 }
@@ -1776,10 +1817,7 @@ func parseFieldsDefinition(lexer *Lexer) ([]*FieldDefinition, error) {
     // "{"
     lexer.NextTokenIs(TOKEN_LEFT_BRACE)
     // FieldDefinition+
-    for {
-        if lexer.LookAhead() == TOKEN_RIGHT_BRACE {
-            break
-        } 
+    for lexer.LookAhead() != TOKEN_RIGHT_BRACE {
         var fieldDefinition *FieldDefinition
         var err              error
         if fieldDefinition, err = parseFieldDefinition(lexer); err != nil {
@@ -1842,10 +1880,7 @@ func parseArgumentsDefinition(lexer *Lexer) (ArgumentsDefinition, error) {
     // "("
     lexer.NextTokenIs(TOKEN_LEFT_PAREN)
     // FieldDefinition+
-    for {
-        if lexer.LookAhead() == TOKEN_RIGHT_PAREN {
-            break
-        } 
+    for lexer.LookAhead() != TOKEN_RIGHT_PAREN {
         var inputValueDefinition *InputValueDefinition
         var err              error
         if inputValueDefinition, err = parseInputValueDefinition(lexer); err != nil {
