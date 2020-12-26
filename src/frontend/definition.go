@@ -9,7 +9,12 @@ type Definition interface{
 
 // Definition should be 
 var _ Definition = (*TypeSystemDefinition)(nil)
+var _ Definition = (*ScalarTypeDefinition)(nil)
+var _ Definition = (*ObjectTypeDefinition)(nil)
+var _ Definition = (*InterfaceTypeDefinition)(nil)
+var _ Definition = (*UnionTypeDefinition)(nil)
 var _ Definition = (*EnumTypeDefinition)(nil)
+var _ Definition = (*InputObjectTypeDefinition)(nil)
 var _ Definition = (*OperationDefinition)(nil)
 // var _ Definition = (*FragmentDefinition)(nil)
 
@@ -31,39 +36,6 @@ func (typeSystemDefinition *TypeSystemDefinition) GetDefinitionType() string {
     return TypeSystemDefinitionType
 }
 
-
-/**
- * EnumTypeDefinition        ::= Description? Ignored "enum" Ignored Name Ignored Directives? Ignored EnumValuesDefinition? Ignored
- * EnumValuesDefinition      ::= "{" Ignored EnumValueDefinition+ Ignored "}" Ignored
- * EnumValueDefinition       ::= Description? Ignored EnumValue Ignored Directives? Ignored
- * EnumTypeExtension         ::= "extend" Ignored "enum" Ignored Name Ignored Directives? Ignored EnumValuesDefinition Ignored | "extend" Ignored "enum" Ignored Name Ignored Directives Ignored
- *
- */
-type EnumTypeDefinition struct {
-    LineNum                 int 
-    Name                   *Name
-    Description             StringValue
-    Directives           []*Directive
-    EnumValuesDefinition []*EnumValueDefinition
-}
-
-func (enumTypeDefinition EnumTypeDefinition) GetDefinitionType() string {
-    return TypeSystemDefinitionType
-}
-
-type EnumValueDefinition struct {
-    LineNum        int
-    Description    StringValue 
-    EnumValue      EnumValue
-    Directives  []*Directive
-}
-
-type EnumTypeExtension struct {
-    LineNum                 int
-    Name                   *Name
-    Directives           []*Directive
-    EnumValuesDefinition []*EnumValueDefinition
-}
 
 
 /**
@@ -371,13 +343,13 @@ type TypeCondition struct {
 type SchemaDefinition struct {
     LineNum                    int 
     Directives              []*Directive
-    OperationTypeDefinition    OperationTypeDefinition
+    OperationTypeDefinition   *OperationTypeDefinition
 }
 
 type SchemaExtension struct {
     LineNum                    int 
     Directives              []*Directive 
-    OperationTypeDefinition    OperationTypeDefinition
+    OperationTypeDefinition   *OperationTypeDefinition
 }
 
 /**
@@ -413,6 +385,10 @@ type ScalarTypeDefinition struct {
     Directives []*Directive
 }
 
+func (scalarTypeDefinition *ScalarTypeDefinition) GetDefinitionType() string {
+    return TypeSystemDefinitionType
+}
+
 type ScalarTypeExtension struct {
     LineNum       int 
     Name         *Name 
@@ -426,18 +402,23 @@ type ScalarTypeExtension struct {
  */
 type ObjectTypeDefinition struct {
     LineNum                 int 
+    Description             StringValue
     Name                   *Name 
-    ImplementsInterfaces    ImplementsInterfaces
+    ImplementsInterfaces   *ImplementsInterfaces
     Directives           []*Directive
-    FieldsDefinition        FieldsDefinition
+    FieldsDefinition     []*FieldDefinition
+}
+
+func (objectTypeDefinition *ObjectTypeDefinition) GetDefinitionType() string {
+    return TypeSystemDefinitionType
 }
 
 type ObjectTypeExtension struct {
     LineNum                 int 
     Name                   *Name 
-    ImplementsInterfaces    ImplementsInterfaces
+    ImplementsInterfaces   *ImplementsInterfaces
     Directives           []*Directive
-    FieldsDefinition        FieldsDefinition
+    FieldsDefinition     []*FieldDefinition
 }
 
 
@@ -461,14 +442,18 @@ type InterfaceTypeDefinition struct {
     Description         StringValue
     Name               *Name 
     Directives       []*Directive
-    FieldsDefinition    FieldsDefinition
+    FieldsDefinition []*FieldDefinition
 }
+
+func (interfaceTypeDefinition *InterfaceTypeDefinition)GetDefinitionType() string {
+    return TypeSystemDefinitionType
+} 
 
 type InterfaceTypeExtension struct {
     LineNum             int 
     Name               *Name 
     Directives       []*Directive
-    FieldsDefinition    FieldsDefinition
+    FieldsDefinition []*FieldDefinition
 }
 
 
@@ -483,7 +468,11 @@ type UnionTypeDefinition struct {
     Description         StringValue
     Name               *Name 
     Directives       []*Directive
-    UnionMemberTypes    UnionMemberTypes
+    UnionMemberTypes   *UnionMemberTypes
+}
+
+func (unionTypeDefinition *UnionTypeDefinition) GetDefinitionType() string {
+    return TypeSystemDefinitionType
 }
 
 type UnionMemberTypes struct {
@@ -495,7 +484,41 @@ type UnionTypeExtension struct {
     LineNum             int
     Name               *Name
     Directives       []*Directive
-    UnionMemberTypes    UnionMemberTypes
+    UnionMemberTypes   *UnionMemberTypes
+}
+
+
+/**
+ * EnumTypeDefinition        ::= Description? Ignored "enum" Ignored Name Ignored Directives? Ignored EnumValuesDefinition? Ignored
+ * EnumValuesDefinition      ::= "{" Ignored EnumValueDefinition+ Ignored "}" Ignored
+ * EnumValueDefinition       ::= Description? Ignored EnumValue Ignored Directives? Ignored
+ * EnumTypeExtension         ::= "extend" Ignored "enum" Ignored Name Ignored Directives? Ignored EnumValuesDefinition Ignored | "extend" Ignored "enum" Ignored Name Ignored Directives Ignored
+ *
+ */
+type EnumTypeDefinition struct {
+    LineNum                 int 
+    Name                   *Name
+    Description             StringValue
+    Directives           []*Directive
+    EnumValuesDefinition []*EnumValueDefinition
+}
+
+func (enumTypeDefinition EnumTypeDefinition) GetDefinitionType() string {
+    return TypeSystemDefinitionType
+}
+
+type EnumValueDefinition struct {
+    LineNum        int
+    Description    StringValue 
+    EnumValue      EnumValue
+    Directives  []*Directive
+}
+
+type EnumTypeExtension struct {
+    LineNum                 int
+    Name                   *Name
+    Directives           []*Directive
+    EnumValuesDefinition []*EnumValueDefinition
 }
 
 
@@ -510,16 +533,18 @@ type InputObjectTypeDefinition struct {
     Description              StringValue
     Name                    *Name 
     Directives            []*Directive
-    InputFieldsDefinition    InputFieldsDefinition
+    InputFieldsDefinition []*InputValueDefinition
 }
 
-type InputFieldsDefinition []*InputValueDefinition
+func (inputObjectTypeDefinition InputObjectTypeDefinition) GetDefinitionType() string {
+    return TypeSystemDefinitionType
+}
 
 type InputObjectTypeExtension struct {
     LineNum                   int
     Name                     *Name
     Directives             []*Directive
-    InputFieldsDefinition     InputFieldsDefinition
+    InputFieldsDefinition  []*InputValueDefinition
 }
 
 
@@ -551,8 +576,6 @@ type DirectiveLocation string
  * FieldDefinition  ::= Description? Ignored Name Ignored ArgumentsDefinition? Ignored ":" Ignored Type Ignored Directives? Ignored
  *
  */
-type FieldsDefinition []*FieldDefinition
-
 type FieldDefinition struct {
     LineNum                int
     Description            StringValue

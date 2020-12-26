@@ -158,13 +158,14 @@ func (lexer *Lexer) NextTokenIs(tokenType int) (lineNum int, token string) {
     if tokenType != nowTokenType {
         fmt.Println("\n\n\033[05m\033[41;37m                    OOOOOOOOOPS! TOKEN EXCEPT FAILED                    \033[0m\n")
         err := fmt.Sprintf("line %d: syntax error near '%s'.", lexer.GetLineNum(), nowToken) 
-        fmt.Println("- dump lexer --------------")
-        fmt.Printf("document:\n%v\n", lexer.document)
-        fmt.Printf("lineNum:\n%v\n", lexer.lineNum)
-        fmt.Printf("nowToken:\n%v\n", nowToken)
-        fmt.Printf("nextToken:\n%v\n", lexer.nextToken)
-        fmt.Printf("nextTokenType:\n%v\n", lexer.nextTokenType)
-        fmt.Printf("nextTokenLineNum:\n%v\n", lexer.nextTokenLineNum)
+        fmt.Println("- [Lexer Dump] -------------------------------------------------------\n")
+        fmt.Printf("document:\n\n\033[33m%v\033[0m\n\n", lexer.document)
+        fmt.Printf("lineNum:          \033[33m%v\033[0m\n", lexer.lineNum)
+        fmt.Printf("nowToken:         \033[33m%v\033[0m\n", nowToken)
+        fmt.Printf("nextToken:        \033[33m%v\033[0m\n", lexer.nextToken)
+        fmt.Printf("nextTokenType:    \033[33m%v\033[0m\n", lexer.nextTokenType)
+        fmt.Printf("nextTokenLineNum: \033[33m%v\033[0m\n", lexer.nextTokenLineNum)
+        fmt.Printf("\n---------------------------------------------------------------------\n\n")
         panic(err)
     }
     return nowLineNum, nowToken
@@ -334,6 +335,9 @@ func (lexer *Lexer) MatchToken() (lineNum int, tokenType int, token string) {
     case '&' :
         lexer.skipDocument(1)
         return lexer.lineNum, TOKEN_AND, "&"
+    case '|' :
+        lexer.skipDocument(1)
+        return lexer.lineNum, TOKEN_VERTICAL_BAR, "|"
     case '"' :
         if lexer.nextDocumentIs("\"\"\"\"\"\"") {
             lexer.skipDocument(6)
