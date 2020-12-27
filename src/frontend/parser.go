@@ -1,6 +1,5 @@
 // parser.go
 
-
 package frontend
 
 import (
@@ -40,7 +39,9 @@ import (
  *
  */
 func parseName(lexer *Lexer) (*Name, error) {
-    lineNum, token := lexer.NextTokenIs(TOKEN_IDENTIFIER)
+    fmt.Printf("\033[31m[INTO] func parseName  \033[0m\n")
+
+    lineNum, _, token := lexer.GetNextToken()
     for _, b := range []rune(token) {
         if (b == '_' || 
             b >= 'a' && b <= 'z' ||
@@ -210,7 +211,8 @@ func parseDefinition(lexer *Lexer) (Definition, error) {
     case TOKEN_FRAGMENT:
         return parseFragmentDefinition(lexer)
     default:
-        return nil, nil
+        err := errors.New("parseDefinition(): can not parse Definition.")
+        return nil, err
     }
 }
 
@@ -255,6 +257,11 @@ func parseOperationDefinition(lexer *Lexer) (*OperationDefinition, error) {
     }
     // SelectionSet
     SHORT_QUERY_OPERATION:
+        // fill operationDefinition base info
+        if operationDefinition.OperationTypeName == "" {
+            operationDefinition.OperationType, operationDefinition.OperationTypeName = parseOperationType(lexer)
+        }
+        // SelectionSet
         if operationDefinition.SelectionSet, err = parseSelectionSet(lexer); err != nil {
             return nil, err
         }
@@ -277,7 +284,6 @@ func parseOperationType(lexer *Lexer) (int, string) {
         lexer.NextTokenIs(TOKEN_SUBSCRIPTION)
         operation = TOKEN_SUBSCRIPTION
     default:                 // anonymous operation must be query operation
-        lexer.NextTokenIs(TOKEN_QUERY)
         operation = TOKEN_QUERY 
     }
     return operation, tokenNameMap[operation]
@@ -352,6 +358,8 @@ func parseField(lexer *Lexer) (*Field, error) {
         return nil ,err
     }
     if lexer.LookAhead() == TOKEN_COLON { // suffix is ":", it's Alias
+        // ":"
+        lexer.NextTokenIs(TOKEN_COLON)
         field.Alias = &Alias{lexer.GetLineNum(), name}
         if field.Name, err = parseName(lexer); err != nil {
             return nil, err
@@ -421,6 +429,7 @@ func parseArgument(lexer *Lexer) (*Argument, error) {
     if argument.Name, err = parseName(lexer); err != nil {
         return nil, err
     }
+    // ":"
     lexer.NextTokenIs(TOKEN_COLON)
     // Value
     if argument.Value, err = parseValue(lexer); err != nil {
@@ -444,8 +453,7 @@ func parseFragmentSpread(lexer *Lexer) (*FragmentSpread, error) {
     var fragmentSpread FragmentSpread
     var err            error
 
-    // "..."
-    lexer.NextTokenIs(TOKEN_DOTS)
+    // "..." finished at parseSelection()
     // FragmentName
     if fragmentSpread.Name, err = parseFragmentName(lexer); err != nil {
         return nil, err
@@ -465,8 +473,7 @@ func parseInlineFragment(lexer *Lexer) (*InlineFragment, error) {
     var inlineFragment InlineFragment
     var err            error
 
-    // "..."
-    lexer.NextTokenIs(TOKEN_DOTS)
+    // "..." finished at parseSelection()
     // TypeCondition?
     if lexer.LookAhead() == TOKEN_ON {
         if inlineFragment.TypeCondition, err = parseTypeCondition(lexer); err != nil {
@@ -488,7 +495,7 @@ func parseInlineFragment(lexer *Lexer) (*InlineFragment, error) {
 
 
 func parseFragmentDefinition(lexer *Lexer) (*FragmentDefinition, error) {
-    fmt.Printf("\033[31m[INTO] func parseInlineFragment  \033[0m\n")
+    fmt.Printf("\033[31m[INTO] func parseFragmentDefinition  \033[0m\n")
 
     var fragmentDefinition FragmentDefinition
     var err                error
@@ -517,7 +524,7 @@ func parseFragmentDefinition(lexer *Lexer) (*FragmentDefinition, error) {
 }
 
 func parseFragmentName(lexer *Lexer) (*Name, error) {
-    fmt.Printf("\033[31m[INTO] func parseInlineFragment  \033[0m\n")
+    fmt.Printf("\033[31m[INTO] func parseFragmentName  \033[0m\n")
 
     var name *Name
     var err   error
@@ -535,7 +542,7 @@ func parseFragmentName(lexer *Lexer) (*Name, error) {
 }
 
 func parseTypeCondition(lexer *Lexer) (*Name, error) {
-    fmt.Printf("\033[31m[INTO] func parseInlineFragment  \033[0m\n")
+    fmt.Printf("\033[31m[INTO] func parseTypeCondition  \033[0m\n")
 
     var name *Name 
     var err   error
@@ -566,53 +573,53 @@ func parseValue(lexer *Lexer) (Value, error) {
 
     var value Value
     var err error
-
-    switch token := lexer.LookAhead(); {
-    case token == TOKEN_VAR_PREFIX:  // Variable, start with "$"
+    token := lexer.LookAhead()
+    switch token {
+    case TOKEN_VAR_PREFIX:  // Variable, start with "$"
         if value, err = parseVariable(lexer); err != nil {
             return nil, err
         }
-    case token == TOKEN_NUMBER:      // number, include IntValue, FloatValue
+    case TOKEN_NUMBER:      // number, include IntValue, FloatValue
         if value, err = parseNumberValue(lexer); err != nil {
             return nil, err
         }
-    case token == TOKEN_QUOTE:       // StringValue, "string"
+    case TOKEN_QUOTE:       // StringValue, "string"
         if value, err = parseStringValue(lexer); err != nil {
             return nil, err
         }
-    case token == TOKEN_TRIQUOTE:    // StringValue, """string""" 
+    case TOKEN_TRIQUOTE:    // StringValue, """string""" 
         if value, err = parseStringValue(lexer); err != nil {
             return nil, err
         }
-    case token == TOKEN_HEXQUOTE:    // StringValue, """""" 
+    case TOKEN_HEXQUOTE:    // StringValue, """""" 
         if value, err = parseStringValue(lexer); err != nil {
             return nil, err
         }
-    case token == TOKEN_DUOQUOTE:    // StringValue, ""
+    case TOKEN_DUOQUOTE:    // StringValue, ""
         if value, err = parseStringValue(lexer); err != nil {
             return nil, err
         }
-    case token == TOKEN_TRUE:        // BooleanValue
+    case TOKEN_TRUE:        // BooleanValue
         if value, err = parseBooleanValue(lexer); err != nil {
             return nil, err
         }
-    case token == TOKEN_FALSE:       // BooleanValue
+    case TOKEN_FALSE:       // BooleanValue
         if value, err = parseBooleanValue(lexer); err != nil {
             return nil, err
         }
-    case token == TOKEN_NULL:        // NullValue
+    case TOKEN_NULL:        // NullValue
         if value, err = parseNullValue(lexer); err != nil {
             return nil, err
         }
-    case token == TOKEN_IDENTIFIER:  // EnumValue
+    case TOKEN_IDENTIFIER:  // EnumValue
         if value, err = parseEnumValue(lexer); err != nil {
             return nil, err
         }
-    case token == TOKEN_LEFT_BRACKET: // ListValue
+    case TOKEN_LEFT_BRACKET: // ListValue
         if value, err = parseListValue(lexer); err != nil {
             return nil, err
         }
-    case token == TOKEN_LEFT_BRACE:   // ObjectValue
+    case TOKEN_LEFT_BRACE:   // ObjectValue
         if value, err = parseObjectValue(lexer); err != nil {
             return nil, err
         }
@@ -635,6 +642,9 @@ func parseBooleanValue(lexer *Lexer) (BooleanValue, error) {
 }
 
 func parseNullValue(lexer *Lexer) (NullValue, error) {
+    fmt.Printf("\033[31m[INTO] func parseNullValue  \033[0m\n")
+
+    lexer.NextTokenIs(TOKEN_NULL)
     return NullValue{lexer.GetLineNum()}, nil
 }
 
@@ -844,7 +854,21 @@ func parseType(lexer *Lexer) (Type, error) {
     return typeRet, nil
 }
 
-var parseNamedType = parseName 
+func parseNamedType(lexer *Lexer) (*NamedType, error) {
+    lineNum, _, token := lexer.GetNextToken()
+    for _, b := range []rune(token) {
+        if (b == '_' || 
+            b >= 'a' && b <= 'z' ||
+            b >= 'A' && b <= 'Z' ||
+            b >= '0' && b <= '9' ){
+            continue
+        } else {
+            err := fmt.Sprintf("parseName(): line %d: unexpected symbol near '%v', it is not a GraphQL name expression", lineNum, token)
+            return nil, errors.New(err)
+        }
+    }
+    return &NamedType{lineNum, token}, nil
+}  
 
 func parseListType(lexer *Lexer) (ListType, error) {
     fmt.Printf("\033[31m[INTO] func parseListType  \033[0m\n")
@@ -872,7 +896,8 @@ func parseListType(lexer *Lexer) (ListType, error) {
 
 func parseNonNullType(lexer *Lexer, previousType Type) (NonNullType, error) {
     fmt.Printf("\033[31m[INTO] func parseNonNullType  \033[0m\n")
-
+    // "!"
+    lexer.NextTokenIs(TOKEN_NOT_NULL)
     return NonNullType{lexer.GetLineNum(), previousType}, nil
 }
 
@@ -1011,9 +1036,9 @@ func parseTypeSystemDefinition(lexer *Lexer) (Definition, error) {
         directiveDefinition.Description = description
         return directiveDefinition, nil  
     default:
-        return nil, nil
+        err := errors.New("parseTypeSystemDefinition(): can not parse TypeSystemDefinition.")
+        return nil, err
     }
-    return nil, nil
 }
 
 func parseTypeSystemExtension(lexer *Lexer) (Definition, error) {
@@ -1315,7 +1340,7 @@ func parseImplementsInterfaces(lexer *Lexer) (*ImplementsInterfaces, error) {
     // ImplementsInterfaces
     namedTypeCounter := 0
     for {
-        var namedType *Name
+        var namedType *NamedType
         var err        error
         // "&"?
         if lexer.LookAhead() == TOKEN_AND {
@@ -1451,24 +1476,20 @@ func parseUnionMemberTypes(lexer *Lexer) (*UnionMemberTypes, error) {
     // "=" 
     lexer.NextTokenIs(TOKEN_EQUAL)
     // UnionMemberTypes
-    namedTypeCounter := 0
     for {
-        var namedType *Name
+        var namedType *NamedType
         var err        error
         // "|"?
         if lexer.LookAhead() == TOKEN_VERTICAL_BAR {
             lexer.NextTokenIs(TOKEN_VERTICAL_BAR)
-            namedTypeCounter --
         }
-        // NamedType
-        if namedTypeCounter > 0 { 
+        if lexer.LookAhead() != TOKEN_IDENTIFIER {
             break
         }
         if namedType, err = parseNamedType(lexer); err != nil {
             return nil, err
         }
         unionMemberTypes.NamedTypes = append(unionMemberTypes.NamedTypes, namedType)
-        namedTypeCounter++
     }
     return &unionMemberTypes, nil
 }
@@ -1901,7 +1922,8 @@ func parseInputValueDefinition(lexer *Lexer) (*InputValueDefinition, error) {
 
     // LineNum
     inputValueDefinition.LineNum = lexer.GetLineNum()
-    // Description? finished at parseTypeSystemDefinition()
+    // Description? 
+    inputValueDefinition.Description, _ = parseDescription(lexer)
     // Name
     if inputValueDefinition.Name, err = parseName(lexer); err != nil {
         return nil, err

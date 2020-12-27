@@ -71,6 +71,10 @@ func Execute(request Request) (*Result) {
         fmt.Printf("\n")
         fmt.Printf("\033[33m    [DUMP] Document:  \033[0m\n")
         spewo.Dump(document)
+        if true {
+            finalResult.Data = document
+            return &finalResult
+        }
         fmt.Printf("\033[33m    [DUMP] Request:  \033[0m\n")
         spewo.Dump(request)
         os.Exit(1)
@@ -140,7 +144,7 @@ func getArgumentsMap(request Request, arguments []*frontend.Argument) (map[strin
         // detect value type & fill
         fieldName      := argument.Name.Value
         interfaceValue := argument.Value
-        if val, ok := interfaceValue.(frontend.VariableValue); ok {
+        if val, ok := interfaceValue.(frontend.Variable); ok {
             // resolve input variable value 
             if matchedValue, ok := request.Variables[val.Value]; ok {
                 argumentsMap[fieldName] = matchedValue

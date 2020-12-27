@@ -1,5 +1,4 @@
 // lexer.go
-// 
 
 package frontend
 
@@ -130,7 +129,7 @@ var keywords = map[string]int{
 }
 
 // regex match patterns
-var regexNumber     = regexp.MustCompile(`^0[xX][0-9a-fA-F]*(\.[0-9a-fA-F]*)?([pP][+\-]?[0-9]+)?|^[0-9]*(\.[0-9]*)?([eE][+\-]?[0-9]+)?`)
+var regexNumber     = regexp.MustCompile(`^0[xX][0-9a-fA-F]*(\.[0-9a-fA-F]*)?([pP][+\-]?[0-9]+)?|^[-]?[0-9]*(\.[0-9]*)?([eE][+\-]?[0-9]+)?`)
 var regexIdentifier = regexp.MustCompile(`^[_\d\w]+`)
 
 // lexer struct
@@ -221,6 +220,13 @@ func (lexer *Lexer) skipIgnored() {
         }
         return false
     }
+    isComment := func(c byte) bool {
+        switch c {
+        case '#':
+            return true
+        }
+        return false
+    }
     // matching
     for len(lexer.document) > 0 {
         if lexer.nextDocumentIs("\r\n") || lexer.nextDocumentIs("\n\r") {
@@ -231,8 +237,13 @@ func (lexer *Lexer) skipIgnored() {
             lexer.lineNum += 1
         } else if isWhiteSpace(lexer.document[0]) {
             lexer.skipDocument(1)
-        }  else if isComma(lexer.document[0]) {
+        } else if isComma(lexer.document[0]) {
             lexer.skipDocument(1)
+        } else if isComment(lexer.document[0]) {
+            lexer.skipDocument(1)
+            for !isNewLine(lexer.document[0]) {
+                lexer.skipDocument(1)
+            }
         } else {
             break
         } 
@@ -364,7 +375,7 @@ func (lexer *Lexer) MatchToken() (lineNum int, tokenType int, token string) {
             return lexer.lineNum, TOKEN_IDENTIFIER, token
         }
     }
-    if lexer.document[0] == '.' || isDigit(lexer.document[0]) {
+    if lexer.document[0] == '.' || lexer.document[0] == '-' || isDigit(lexer.document[0]) {
         token := lexer.scanNumber()
         return lexer.GetLineNum(), TOKEN_NUMBER, token
     }

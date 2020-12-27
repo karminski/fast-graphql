@@ -1,4 +1,5 @@
 // definition.go
+
 package frontend
 
 
@@ -207,7 +208,7 @@ func (inlineFragment *InlineFragment) GetSelectionSet() *SelectionSet {
 
 type TypeCondition struct {
     LineNum     int
-    NamedType  *Name
+    NamedType  *NamedType
 }
 
 
@@ -233,7 +234,7 @@ var _ Value = (*EnumValue)(nil)
 var _ Value = (*ListValue)(nil)
 var _ Value = (*ObjectValue)(nil)
 
-
+type Variable Name
 
 type IntValue struct {
     LineNum int
@@ -385,7 +386,7 @@ type OperationTypeDefinition struct {
     LineNum            int 
     OperationType      int
     OperationTypeName  string 
-    NamedType         *Name
+    NamedType         *NamedType
 }
 
 
@@ -462,7 +463,7 @@ func (objectTypeExtension *ObjectTypeExtension) GetDefinitionType() string {
  */
 type ImplementsInterfaces struct {
     LineNum       int 
-    NamedTypes []*Name
+    NamedTypes []*NamedType
 }
 
 
@@ -514,7 +515,7 @@ func (unionTypeDefinition *UnionTypeDefinition) GetDefinitionType() string {
 
 type UnionMemberTypes struct {
     LineNum       int
-    NamedTypes []*Name
+    NamedTypes []*NamedType
 }
 
 type UnionTypeExtension struct {
