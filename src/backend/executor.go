@@ -43,6 +43,11 @@ type ErrorLocation struct {
     Col   int
 }
 
+// GlobalVariables for Query Variables, etc. 
+type GlobalVariables struct {
+    QueryVariablesMap map[string]interface{}
+}
+
 func (result *Result) SetErrorInfo(err error, errorLocation *ErrorLocation) {
     errStr := fmt.Sprintf("%v", err)
     errorInfo := ErrorInfo{errStr, errorLocation}
@@ -79,6 +84,7 @@ func Execute(request Request) (*Result) {
     var document *frontend.Document
     var err       error
     result := Result{} 
+    g      := &GlobalVariables{}
     // debugging
     spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
 
@@ -111,20 +117,19 @@ func Execute(request Request) (*Result) {
     }
 
     // fill Query Variables Map
-    var queryVariablesMap map[string]interface{}
-    if queryVariablesMap, err = getQueryVariablesMap(request, operationDefinition.VariableDefinitions); err != nil {
+    if g.QueryVariablesMap, err = getQueryVariablesMap(request, operationDefinition.VariableDefinitions); err != nil {
         result.SetErrorInfo(err, nil)
         return &result
     }
-    fmt.Printf("\033[33m    [DUMP] queryVariablesMap:  \033[0m\n")
-    spewo.Dump(queryVariablesMap)
+    fmt.Printf("\033[33m    [DUMP] g.QueryVariablesMap:  \033[0m\n")
+    spewo.Dump(g.QueryVariablesMap)
 
     selectionSet := operationDefinition.SelectionSet
     // selectionSetFields := getSelectionSetFields(selectionSet)
     objectFields       := request.Schema.GetQueryObjectFields()
     // execute
     fmt.Println("\n\n\033[33m////////////////////////////////////////// Executor Start ///////////////////////////////////////\033[0m\n")
-    resolvedResult, _ := resolveSelectionSet(request, selectionSet, objectFields, nil)
+    resolvedResult, _ := resolveSelectionSet(g, request, selectionSet, objectFields, nil)
     fmt.Printf("\033[33m    [DUMP] resolvedResult:  \033[0m\n")
     spewo.Dump(resolvedResult)
     result.Data = resolvedResult
@@ -147,7 +152,7 @@ func getSelectionSetFields(selectionSet *frontend.SelectionSet) map[string]*fron
 }
 
 
-func resolveSelectionSet(request Request, selectionSet *frontend.SelectionSet, objectFields ObjectFields, resolvedData interface{}) (interface{}, error) {
+func resolveSelectionSet(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectFields ObjectFields, resolvedData interface{}) (interface{}, error) {
     selections  := selectionSet.GetSelections()
     finalResult := make(map[string]interface{}, len(selections))
     for _, selection := range selections {
@@ -155,7 +160,7 @@ func resolveSelectionSet(request Request, selectionSet *frontend.SelectionSet, o
         field := selection.(*frontend.Field)
         fieldName := getFieldName(field)
         // resolve Field
-        resolvedResult, _ := resolveField(request, fieldName, field, objectFields, resolvedData)
+        resolvedResult, _ := resolveField(g, request, fieldName, field, objectFields, resolvedData)
         finalResult[fieldName] = resolvedResult   
     }
     return finalResult, nil
@@ -181,83 +186,32 @@ func getQueryVariablesMap(request Request, variableDefinitions []*frontend.Varia
     fmt.Printf("\033[33m    [DUMP] variableDefinitions:  \033[0m\n")
     spewo.Dump(variableDefinitions)
 
-	argumentsMap := make(map[string]interface{}, len(variableDefinitions))
+	queryVariablesMap := make(map[string]interface{}, len(variableDefinitions))
 	
     for _, variableDefinition := range variableDefinitions {
         // detect value type & fill
         variableName := variableDefinition.Variable.Value
-		// variableType := variableDefinition.Type
+		variableType := variableDefinition.Type
 		if matchedValue, ok := request.Variables[variableName]; ok {
-            argumentsMap[variableName] = matchedValue
-		}
-
-        // if val, ok := interfaceValue.(frontend.Variable); ok {
-        //     // resolve input variable value 
-        //     if matchedValue, ok := request.Variables[val.Value]; ok {
-        //         argumentsMap[fieldName] = matchedValue
-        //     } else {
-        //         // can not find input 
-        //         err := "getQueryVariablesMap(): field missing input argument variable $"+fieldName+", please check your Request.variables input."
-        //         return nil, errors.New(err)
-        //     }
-        // } else if val, ok := interfaceValue.(frontend.IntValue); ok {
-        //     argumentsMap[fieldName] = val.Value
-        // } else if val, ok := interfaceValue.(frontend.StringValue); ok {
-        //     argumentsMap[fieldName] = val.Value
-        // } else if val, ok := interfaceValue.(frontend.FloatValue); ok {
-        //     argumentsMap[fieldName] = val.Value
-        // } else if val, ok := interfaceValue.(frontend.BooleanValue); ok {
-        //     argumentsMap[fieldName] = val.Value
-        // } else {
-        //     argumentsMap[fieldName] = nil
-        // }
-    }
-    
-    fmt.Printf("\033[33m    [DUMP] argumentsMap:  \033[0m\n")
-    spewo.Dump(argumentsMap)
-
-    return argumentsMap, nil
-}
-
-// get uset input Query Variables map?
-func getRequestArgumentsMap(request Request, arguments []*frontend.Argument) (map[string]interface{}, error) {
-    fmt.Printf("\n")
-    fmt.Printf("\033[31m[INTO] func getRequestArgumentsMap  \033[0m\n")
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-
-	argumentsMap := make(map[string]interface{}, len(arguments))
-	
-    for _, argument := range arguments {
-        // detect value type & fill
-        fieldName      := argument.Name.Value
-		interfaceValue := argument.Value
-        if val, ok := interfaceValue.(frontend.Variable); ok {
-            // resolve input variable value 
-            if matchedValue, ok := request.Variables[val.Value]; ok {
-                argumentsMap[fieldName] = matchedValue
+            queryVariablesMap[variableName] = matchedValue
+        // check NonNullType
+		} else if _, ok := variableType.(frontend.NonNullType); ok {
+            typeStr := ""
+            if val, ok := variableType.(frontend.NonNullType).Type.(*frontend.NamedType); ok {
+                typeStr = val.Value
             } else {
-                // can not find input 
-                err := "getRequestArgumentsMap(): field missing input argument variable $"+fieldName+", please check your Request.variables input."
-                return nil, errors.New(err)
+                typeStr = reflect.TypeOf(variableType.(frontend.NonNullType).Type).Elem().Name()
             }
-        } else if val, ok := interfaceValue.(frontend.IntValue); ok {
-            argumentsMap[fieldName] = val.Value
-        } else if val, ok := interfaceValue.(frontend.StringValue); ok {
-            argumentsMap[fieldName] = val.Value
-        } else if val, ok := interfaceValue.(frontend.FloatValue); ok {
-            argumentsMap[fieldName] = val.Value
-        } else if val, ok := interfaceValue.(frontend.BooleanValue); ok {
-            argumentsMap[fieldName] = val.Value
-        } else {
-            argumentsMap[fieldName] = nil
+            return nil, errors.New("getQueryVariablesMap(): variable '"+variableName+"' is NonNullType '"+typeStr+"!', query variables not provided.")
         }
     }
     
-    fmt.Printf("\033[33m    [DUMP] argumentsMap:  \033[0m\n")
-    spewo.Dump(argumentsMap)
+    fmt.Printf("\033[33m    [DUMP] queryVariablesMap:  \033[0m\n")
+    spewo.Dump(queryVariablesMap)
 
-    return argumentsMap, nil
+    return queryVariablesMap, nil
 }
+
 
 func checkIfInputArgumentsAvaliable(inputArguments map[string]interface{}, targetObjectFieldArguments *Arguments) (bool, error) {
     for argumentName, _ := range inputArguments {
@@ -269,7 +223,7 @@ func checkIfInputArgumentsAvaliable(inputArguments map[string]interface{}, targe
     return true, nil
 }
 
-func resolveField(request Request, fieldName string, field *frontend.Field, objectFields ObjectFields, resolvedData interface{}) (interface{}, error) {
+func resolveField(g *GlobalVariables, request Request, fieldName string, field *frontend.Field, objectFields ObjectFields, resolvedData interface{}) (interface{}, error) {
     fmt.Printf("\n")
     fmt.Printf("\033[31m[INTO] func resolveField  \033[0m\n")
     spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
@@ -297,16 +251,7 @@ func resolveField(request Request, fieldName string, field *frontend.Field, obje
     // no context resovedData input, check GraphQL Request Arguments
     if resolvedData == nil {
         p := ResolveParams{}
-        // GraphQL Request Arguments are avaliable
-        if field.Arguments != nil {
-            var error error
-            if p.Arguments, error = getRequestArgumentsMap(request, field.Arguments); error != nil {
-                return nil, error
-            }
-            if ok, error := checkIfInputArgumentsAvaliable(p.Arguments, objectFields[fieldName].Arguments); !ok {
-                return nil, error
-            }
-        }
+        p.Arguments = g.QueryVariablesMap
         fmt.Printf("\033[33m    [DUMP] p.Arguments:  \033[0m\n")
         spewo.Dump(p.Arguments)
         resolvedData, _ = resolveFunction(p) 
@@ -334,7 +279,7 @@ func resolveField(request Request, fieldName string, field *frontend.Field, obje
     targetObjectField := objectFields[fieldName]
     targetObjectFieldType := objectFields[fieldName].Type
     // go
-    resolvedSubData, _ := resolveSubField(request, targetSelectionSet, targetObjectField, targetObjectFieldType, resolvedData)
+    resolvedSubData, _ := resolveSubField(g, request, targetSelectionSet, targetObjectField, targetObjectFieldType, resolvedData)
     return resolvedSubData, nil
 }
 
@@ -376,27 +321,27 @@ func resolvedDataTypeChecker(fieldName string, resolvedData interface{}, expecte
 }
 
 
-func resolveSubField(request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, targetType FieldType, resolvedData interface{}) (interface{}, error) {
+func resolveSubField(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, targetType FieldType, resolvedData interface{}) (interface{}, error) {
     fmt.Printf("\n")
     fmt.Printf("\033[31m[INTO] func resolveSubField  \033[0m\n")
     // get resolve target type
 
     if _, ok := targetType.(*List); ok {
-        return resolveListData(request, selectionSet, objectField, resolvedData)
+        return resolveListData(g, request, selectionSet, objectField, resolvedData)
     } 
 
     if _, ok := targetType.(*Scalar); ok {
-        return resolveScalarData(request, selectionSet, objectField, resolvedData)
+        return resolveScalarData(g, request, selectionSet, objectField, resolvedData)
     }
 
     if _, ok := targetType.(*Object); ok {
-        return resolveObjectData(request, selectionSet, objectField, resolvedData)
+        return resolveObjectData(g, request, selectionSet, objectField, resolvedData)
     }
     return nil, nil
     
 }
 
-func resolveListData(request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
+func resolveListData(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
     fmt.Printf("\n")
     fmt.Printf("\033[31m[INTO] func resolveListData  \033[0m\n")
     // spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
@@ -415,13 +360,13 @@ func resolveListData(request Request, selectionSet *frontend.SelectionSet, objec
         // fmt.Printf("\033[33m    [DUMP] selectionSet:  \033[0m\n")
         // spewo.Dump(selectionSet)
         // execute
-        selectionSetResult, _ := resolveSelectionSet(request, selectionSet, targetObjectFields, resolvedDataElement)
+        selectionSetResult, _ := resolveSelectionSet(g, request, selectionSet, targetObjectFields, resolvedDataElement)
         finalResult = append(finalResult, selectionSetResult)
     }
     return finalResult, nil
 }
 
-func resolveScalarData(request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
+func resolveScalarData(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
     fmt.Printf("\n")
     fmt.Printf("\033[31m[INTO] func resolveScalarData  \033[0m\n")
     spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
@@ -448,7 +393,7 @@ func resolveScalarData(request Request, selectionSet *frontend.SelectionSet, obj
     return r1, nil
 }
 
-func resolveObjectData(request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
+func resolveObjectData(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
     fmt.Printf("\n")
     fmt.Printf("\033[31m[INTO] func resolveObjectData  \033[0m\n")
 
@@ -463,7 +408,7 @@ func resolveObjectData(request Request, selectionSet *frontend.SelectionSet, obj
 
     // go
     targetObjectFields := objectField.Type.(*Object).Fields
-    selectionSetResult, _ := resolveSelectionSet(request, selectionSet, targetObjectFields, resolvedData)
+    selectionSetResult, _ := resolveSelectionSet(g, request, selectionSet, targetObjectFields, resolvedData)
     return selectionSetResult, nil
 }
 
