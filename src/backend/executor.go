@@ -29,8 +29,24 @@ type Request struct {
 }
 
 type Result struct {
-    Data  interface{} `json:"data"`
-    Error error       `json:"error"`
+    Data      interface{} `json:"data"`
+    Errors []*ErrorInfo   `json:"errors"`
+}
+
+type ErrorInfo struct {
+    Message   string
+    Location *ErrorLocation
+}
+
+type ErrorLocation struct {
+    Line  int 
+    Col   int
+}
+
+func (result *Result) SetErrorInfo(err error, errorLocation *ErrorLocation) {
+    errStr := fmt.Sprintf("%v", err)
+    errorInfo := ErrorInfo{errStr, errorLocation}
+    result.Errors = append(result.Errors, &errorInfo)
 }
 
 func DecodeVariables(inputVariables string) (map[string]interface{}, error) {
@@ -61,15 +77,15 @@ func getFieldName(field *frontend.Field) string {
 
 func Execute(request Request) (*Result) {
     var document *frontend.Document
-    var err error
-    finalResult := Result{} 
+    var err       error
+    result := Result{} 
     // debugging
     spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
 
     // process input
     if document, err = frontend.Compile(request.Query); err != nil {
-        spewo.Dump(err)
-        os.Exit(1)
+        result.SetErrorInfo(err, nil)
+        return &result
     }
 
     // @todo: THE DOCUMENT NEED VALIDATE!
@@ -79,8 +95,8 @@ func Execute(request Request) (*Result) {
         fmt.Printf("\033[33m    [DUMP] Document:  \033[0m\n")
         spewo.Dump(document)
         if true {
-            finalResult.Data = document
-            return &finalResult
+            result.Data = document
+            return &result
         }
         fmt.Printf("\033[33m    [DUMP] Request:  \033[0m\n")
         spewo.Dump(request)
@@ -88,7 +104,21 @@ func Execute(request Request) (*Result) {
     }
 
     // get top layer SelectionSet.Fields and request.Schema.ObjectFields
-    operationDefinition, _ := document.GetOperationDefinition()
+    var operationDefinition *frontend.OperationDefinition
+    if operationDefinition, err = document.GetOperationDefinition(); err != nil {
+        result.SetErrorInfo(err, nil)
+        return &result
+    }
+
+    // fill Query Variables Map
+    var queryVariablesMap map[string]interface{}
+    if queryVariablesMap, err = getQueryVariablesMap(request, operationDefinition.VariableDefinitions); err != nil {
+        result.SetErrorInfo(err, nil)
+        return &result
+    }
+    fmt.Printf("\033[33m    [DUMP] queryVariablesMap:  \033[0m\n")
+    spewo.Dump(queryVariablesMap)
+
     selectionSet := operationDefinition.SelectionSet
     // selectionSetFields := getSelectionSetFields(selectionSet)
     objectFields       := request.Schema.GetQueryObjectFields()
@@ -97,8 +127,8 @@ func Execute(request Request) (*Result) {
     resolvedResult, _ := resolveSelectionSet(request, selectionSet, objectFields, nil)
     fmt.Printf("\033[33m    [DUMP] resolvedResult:  \033[0m\n")
     spewo.Dump(resolvedResult)
-    finalResult.Data = resolvedResult
-    return &finalResult
+    result.Data = resolvedResult
+    return &result
 }
 
 
@@ -143,26 +173,71 @@ func getResolveFunction(fieldName string, objectFields ObjectFields) ResolveFunc
 
 
 // get uset input Query Variables map?
-func getQueryVariablesMap(request Request, arguments []*frontend.Argument) (map[string]interface{}, error) {
+func getQueryVariablesMap(request Request, variableDefinitions []*frontend.VariableDefinition) (map[string]interface{}, error) {
     fmt.Printf("\n")
     fmt.Printf("\033[31m[INTO] func getQueryVariablesMap  \033[0m\n")
     spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
 
-    fmt.Printf("\033[33m    [DUMP] arguments:  \033[0m\n")
-    spewo.Dump(arguments)
+    fmt.Printf("\033[33m    [DUMP] variableDefinitions:  \033[0m\n")
+    spewo.Dump(variableDefinitions)
 
-    argumentsMap := make(map[string]interface{}, len(arguments))
+	argumentsMap := make(map[string]interface{}, len(variableDefinitions))
+	
+    for _, variableDefinition := range variableDefinitions {
+        // detect value type & fill
+        variableName := variableDefinition.Variable.Value
+		// variableType := variableDefinition.Type
+		if matchedValue, ok := request.Variables[variableName]; ok {
+            argumentsMap[variableName] = matchedValue
+		}
+
+        // if val, ok := interfaceValue.(frontend.Variable); ok {
+        //     // resolve input variable value 
+        //     if matchedValue, ok := request.Variables[val.Value]; ok {
+        //         argumentsMap[fieldName] = matchedValue
+        //     } else {
+        //         // can not find input 
+        //         err := "getQueryVariablesMap(): field missing input argument variable $"+fieldName+", please check your Request.variables input."
+        //         return nil, errors.New(err)
+        //     }
+        // } else if val, ok := interfaceValue.(frontend.IntValue); ok {
+        //     argumentsMap[fieldName] = val.Value
+        // } else if val, ok := interfaceValue.(frontend.StringValue); ok {
+        //     argumentsMap[fieldName] = val.Value
+        // } else if val, ok := interfaceValue.(frontend.FloatValue); ok {
+        //     argumentsMap[fieldName] = val.Value
+        // } else if val, ok := interfaceValue.(frontend.BooleanValue); ok {
+        //     argumentsMap[fieldName] = val.Value
+        // } else {
+        //     argumentsMap[fieldName] = nil
+        // }
+    }
+    
+    fmt.Printf("\033[33m    [DUMP] argumentsMap:  \033[0m\n")
+    spewo.Dump(argumentsMap)
+
+    return argumentsMap, nil
+}
+
+// get uset input Query Variables map?
+func getRequestArgumentsMap(request Request, arguments []*frontend.Argument) (map[string]interface{}, error) {
+    fmt.Printf("\n")
+    fmt.Printf("\033[31m[INTO] func getRequestArgumentsMap  \033[0m\n")
+    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+
+	argumentsMap := make(map[string]interface{}, len(arguments))
+	
     for _, argument := range arguments {
         // detect value type & fill
         fieldName      := argument.Name.Value
-        interfaceValue := argument.Value
+		interfaceValue := argument.Value
         if val, ok := interfaceValue.(frontend.Variable); ok {
             // resolve input variable value 
             if matchedValue, ok := request.Variables[val.Value]; ok {
                 argumentsMap[fieldName] = matchedValue
             } else {
                 // can not find input 
-                err := "getQueryVariablesMap(): field missing input argument variable $"+fieldName+", please check your Request.variables input."
+                err := "getRequestArgumentsMap(): field missing input argument variable $"+fieldName+", please check your Request.variables input."
                 return nil, errors.New(err)
             }
         } else if val, ok := interfaceValue.(frontend.IntValue); ok {
@@ -225,7 +300,7 @@ func resolveField(request Request, fieldName string, field *frontend.Field, obje
         // GraphQL Request Arguments are avaliable
         if field.Arguments != nil {
             var error error
-            if p.Arguments, error = getQueryVariablesMap(request, field.Arguments); error != nil {
+            if p.Arguments, error = getRequestArgumentsMap(request, field.Arguments); error != nil {
                 return nil, error
             }
             if ok, error := checkIfInputArgumentsAvaliable(p.Arguments, objectFields[fieldName].Arguments); !ok {

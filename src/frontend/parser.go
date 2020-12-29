@@ -141,6 +141,8 @@ func isDocumentEnd(tokenType int) bool {
  *
  */
 func parseDefinitions(lexer *Lexer) ([]Definition, error) {
+    fmt.Printf("\033[31m[INTO] func parseDefinitions  \033[0m\n")
+
     var definitions []Definition
     for !isDocumentEnd(lexer.LookAhead()) {
         var definition Definition
@@ -155,6 +157,8 @@ func parseDefinitions(lexer *Lexer) ([]Definition, error) {
 }
 
 func parseDefinition(lexer *Lexer) (Definition, error) {
+    fmt.Printf("\033[31m[INTO] func parseDefinition  \033[0m\n")
+    
     switch lexer.LookAhead() {
     /**
      * Definition: 

@@ -136,7 +136,6 @@ var queryType, _ = backend.NewObject(
 
                     fmt.Printf("\033[33m    [INTO] user defined ResolveFunction:  \033[0m\n")
 
-                    spewo.Dump(p.Arguments)
                     id, ok := p.Arguments["id"].(float64)
                     spewo.Dump(id)
 
@@ -226,9 +225,10 @@ func executeQuery(query string, variables map[string]interface{}, schema backend
         Query:  query,
         Variables: variables,
     })
-    // if len(result.Errors) > 0 {
-    //     fmt.Printf("errors: %v", result.Errors)
-    // }
+    if len(result.Errors) > 0 {
+        fmt.Printf("\n\n\n")
+        fmt.Printf("errors: %v", result.Errors)
+    }
     return result
 }
 
