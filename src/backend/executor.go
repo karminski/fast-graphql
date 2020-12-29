@@ -15,7 +15,7 @@ import (
 
 )
 
-const DUMP_FRONTEND = true
+const DUMP_FRONTEND = false
 
 type Request struct {
     // GraphQL Schema config for server side
@@ -34,12 +34,19 @@ type Result struct {
 }
 
 func DecodeVariables(inputVariables string) (map[string]interface{}, error) {
+    fmt.Printf("\n")
+    fmt.Printf("\033[31m[INTO] func DecodeVariables  \033[0m\n")
+
+    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+
     var decodedVariables map[string]interface{}
     // no variables inputed
     if inputVariables == "" {
         return nil, nil
     }
     err := json.Unmarshal([]byte(inputVariables), &decodedVariables)
+    fmt.Printf("\033[33m    [DUMP] decodedVariables:  \033[0m\n")
+    spewo.Dump(decodedVariables)
     if err != nil {
         err := "executeQuery(): user input variables decode failed, please check input variables json syntax." 
         return nil, errors.New(err)
@@ -135,10 +142,15 @@ func getResolveFunction(fieldName string, objectFields ObjectFields) ResolveFunc
 }
 
 
-
-func getArgumentsMap(request Request, arguments []*frontend.Argument) (map[string]interface{}, error) {
+// get uset input Query Variables map?
+func getQueryVariablesMap(request Request, arguments []*frontend.Argument) (map[string]interface{}, error) {
     fmt.Printf("\n")
-    fmt.Printf("\033[31m[INTO] func getArgumentsMap  \033[0m\n")
+    fmt.Printf("\033[31m[INTO] func getQueryVariablesMap  \033[0m\n")
+    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+
+    fmt.Printf("\033[33m    [DUMP] arguments:  \033[0m\n")
+    spewo.Dump(arguments)
+
     argumentsMap := make(map[string]interface{}, len(arguments))
     for _, argument := range arguments {
         // detect value type & fill
@@ -150,7 +162,7 @@ func getArgumentsMap(request Request, arguments []*frontend.Argument) (map[strin
                 argumentsMap[fieldName] = matchedValue
             } else {
                 // can not find input 
-                err := "getArgumentsMap(): field missing input argument variable $"+fieldName+", please check your Request.variables input."
+                err := "getQueryVariablesMap(): field missing input argument variable $"+fieldName+", please check your Request.variables input."
                 return nil, errors.New(err)
             }
         } else if val, ok := interfaceValue.(frontend.IntValue); ok {
@@ -165,6 +177,10 @@ func getArgumentsMap(request Request, arguments []*frontend.Argument) (map[strin
             argumentsMap[fieldName] = nil
         }
     }
+    
+    fmt.Printf("\033[33m    [DUMP] argumentsMap:  \033[0m\n")
+    spewo.Dump(argumentsMap)
+
     return argumentsMap, nil
 }
 
@@ -209,7 +225,7 @@ func resolveField(request Request, fieldName string, field *frontend.Field, obje
         // GraphQL Request Arguments are avaliable
         if field.Arguments != nil {
             var error error
-            if p.Arguments, error = getArgumentsMap(request, field.Arguments); error != nil {
+            if p.Arguments, error = getQueryVariablesMap(request, field.Arguments); error != nil {
                 return nil, error
             }
             if ok, error := checkIfInputArgumentsAvaliable(p.Arguments, objectFields[fieldName].Arguments); !ok {

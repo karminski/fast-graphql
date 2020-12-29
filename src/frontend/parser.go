@@ -795,13 +795,14 @@ func parseVariableDefinition(lexer *Lexer) (*VariableDefinition, error) {
     return &variableDefinition, nil
 }
 
-func parseVariable(lexer *Lexer) (*Name, error) {
+func parseVariable(lexer *Lexer) (Variable, error) {
     fmt.Printf("\033[31m[INTO] func parseVariable  \033[0m\n")
 
     // "$"
     lexer.NextTokenIs(TOKEN_VAR_PREFIX)
-    // Name
-    return parseName(lexer)    
+    
+    // Name    
+    return parseName(lexer)
 }
 
 func parseDefaultValue(lexer *Lexer) (Value, error) {

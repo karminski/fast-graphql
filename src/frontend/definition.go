@@ -234,7 +234,7 @@ var _ Value = (*EnumValue)(nil)
 var _ Value = (*ListValue)(nil)
 var _ Value = (*ObjectValue)(nil)
 
-type Variable Name
+type Variable *Name
 
 type IntValue struct {
     LineNum int

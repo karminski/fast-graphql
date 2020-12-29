@@ -132,10 +132,11 @@ var queryType, _ = backend.NewObject(
                     },
                 },
                 ResolveFunction: func(p backend.ResolveParams) (interface{}, error) {
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+                    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
 
                     fmt.Printf("\033[33m    [INTO] user defined ResolveFunction:  \033[0m\n")
 
+                    spewo.Dump(p.Arguments)
                     id, ok := p.Arguments["id"].(float64)
                     spewo.Dump(id)
 
