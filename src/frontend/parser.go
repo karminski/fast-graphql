@@ -649,7 +649,7 @@ func parseNullValue(lexer *Lexer) (NullValue, error) {
     fmt.Printf("\033[31m[INTO] func parseNullValue  \033[0m\n")
 
     lexer.NextTokenIs(TOKEN_NULL)
-    return NullValue{lexer.GetLineNum()}, nil
+    return NullValue{lexer.GetLineNum(), nil}, nil
 }
 
 func parseEnumValue(lexer *Lexer) (EnumValue, error) {

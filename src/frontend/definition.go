@@ -258,6 +258,7 @@ type BooleanValue struct {
 
 type NullValue struct {
     LineNum int
+    Value   interface{}
 }
 
 type EnumValue struct {

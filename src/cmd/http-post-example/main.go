@@ -136,7 +136,7 @@ var queryType, _ = backend.NewObject(
 
                     fmt.Printf("\033[33m    [INTO] user defined ResolveFunction:  \033[0m\n")
 
-                    id, ok := p.Arguments["id"].(float64)
+                    id, ok := p.Arguments["id"].(int)
                     spewo.Dump(id)
 
                     if ok {

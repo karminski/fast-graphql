@@ -177,6 +177,49 @@ func getResolveFunction(fieldName string, objectFields ObjectFields) ResolveFunc
 }
 
 
+func defaultValueTypeAssertion(value interface{}) (interface{}, error) {
+    // notice: the DefaultValue only accept const Value (Variables are not const Value)
+    if _, ok := value.(frontend.Variable); ok {
+        return nil, errors.New("defaultValueTypeAssertion(): the DefaultValue only accept const Value (Variables are not const Value).")
+    } else if ret, ok := value.(frontend.IntValue); ok {
+        return ret.Value, nil
+    } else if ret, ok := value.(frontend.FloatValue); ok {
+        return ret.Value, nil
+    } else if ret, ok := value.(frontend.StringValue); ok {
+        return ret.Value, nil
+    } else if ret, ok := value.(frontend.BooleanValue); ok {
+        return ret.Value, nil
+    } else if ret, ok := value.(frontend.NullValue); ok {
+        return ret.Value, nil
+    } else if ret, ok := value.(frontend.EnumValue); ok {
+        return ret.Value, nil
+    } else if ret, ok := value.(frontend.ListValue); ok {
+        return ret.Value, nil
+    } else if ret, ok := value.(frontend.ObjectValue); ok {
+        return ret.Value, nil
+    } else {
+        return nil, errors.New("defaultValueTypeAssertion(): illegal default value type '"+reflect.TypeOf(value).Elem().Name()+"'.")
+    }
+}
+
+func correctJsonUnmarshalIntValue(value interface{}, variableType frontend.Type) (int, error) {
+    // Int!
+    if  _, ok := variableType.(frontend.NonNullType); ok {
+        if val, ok := variableType.(frontend.NonNullType).Type.(*frontend.NamedType); ok {
+            if val.Value == Int.Name {
+                return int(value.(float64)), nil
+            }
+        }
+    // Int
+    } else if val, ok := variableType.(*frontend.NamedType); ok {
+        if val.Value == Int.Name {
+            return int(value.(float64)), nil
+        }
+    }
+    // not an int at all
+    return 0, errors.New("correctJsonUnmarshalIntValue(): not a IntValue.")
+}
+
 // get uset input Query Variables map?
 func getQueryVariablesMap(request Request, variableDefinitions []*frontend.VariableDefinition) (map[string]interface{}, error) {
     fmt.Printf("\n")
@@ -186,6 +229,7 @@ func getQueryVariablesMap(request Request, variableDefinitions []*frontend.Varia
     fmt.Printf("\033[33m    [DUMP] variableDefinitions:  \033[0m\n")
     spewo.Dump(variableDefinitions)
 
+    var err error
 	queryVariablesMap := make(map[string]interface{}, len(variableDefinitions))
 	
     for _, variableDefinition := range variableDefinitions {
@@ -193,7 +237,12 @@ func getQueryVariablesMap(request Request, variableDefinitions []*frontend.Varia
         variableName := variableDefinition.Variable.Value
 		variableType := variableDefinition.Type
 		if matchedValue, ok := request.Variables[variableName]; ok {
-            queryVariablesMap[variableName] = matchedValue
+            // convert float64 to int type for json.Unmarshal
+            if intValue, err := correctJsonUnmarshalIntValue(matchedValue, variableType); err == nil {
+                queryVariablesMap[variableName] = intValue
+            } else{
+                queryVariablesMap[variableName] = matchedValue
+            }
         // check NonNullType
 		} else if _, ok := variableType.(frontend.NonNullType); ok {
             typeStr := ""
@@ -203,6 +252,11 @@ func getQueryVariablesMap(request Request, variableDefinitions []*frontend.Varia
                 typeStr = reflect.TypeOf(variableType.(frontend.NonNullType).Type).Elem().Name()
             }
             return nil, errors.New("getQueryVariablesMap(): variable '"+variableName+"' is NonNullType '"+typeStr+"!', query variables not provided.")
+        // check DefaultValue
+        } else if variableDefinition.DefaultValue != nil {
+            if queryVariablesMap[variableName], err = defaultValueTypeAssertion(variableDefinition.DefaultValue); err != nil {
+                return nil, err
+            }
         }
     }
     
