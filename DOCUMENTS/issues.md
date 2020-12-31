@@ -15,8 +15,9 @@ issues.md
 
 ### #5, variable 为什么没有纳入 GraphQL Schema? 现有实现(graphql-go, graphql-js) 都是通过参数传递进去的.
 
+### #7, VariableDefinition 的 Type 需要进行检查.
 
-
+### #8, 请求存在多个 Selection 的情况下, 如果有一个 Selection执行失败, 错误该怎样处理?
 
 # Closed Issues
 

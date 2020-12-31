@@ -9,6 +9,8 @@ fast-graphql
 该项目是一个 Go 语言编写的实验性 GraphQL 实现. 目的是将 GraphQL 的 Parse 和 Resolve 性能提升到一个新的水平.  
 目前, 该项目在尝试使用 JIT Parser, ASM 优化 Parser, SIMD 优化方法来提升性能.  
 
+注意: 本项目仍然在构建中, 并不可以投入生产使用.
+
 # Steps & Objects
 
 - 完成一个只有 query operation 的最小 Demo. (✔️)
@@ -36,7 +38,12 @@ fast-graphql
 - [事项列表](./DOCUMENTS/todo-list.md)
 - [想法和优化方案](./DOCUMENTS/ideas.md)
 
+# Dependency
+
+本项目的后端逻辑是从 [graphql-go](https://github.com/graphql-go/graphql) 移植而来, Parser & Lexer 部分则受到了 Lua 的启发构建而成.
+
 # Contributors
+
 - [karminski](https://github.com/karminski)
 
 # Reference

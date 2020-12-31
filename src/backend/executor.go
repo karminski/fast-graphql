@@ -45,6 +45,7 @@ type ErrorLocation struct {
 
 // GlobalVariables for Query Variables, etc. 
 type GlobalVariables struct {
+    // asserted query variables from request.Variables by VariableDefinition filtered
     QueryVariablesMap map[string]interface{}
 }
 
@@ -126,7 +127,24 @@ func Execute(request Request) (*Result) {
 
     selectionSet := operationDefinition.SelectionSet
     // selectionSetFields := getSelectionSetFields(selectionSet)
-    objectFields       := request.Schema.GetQueryObjectFields()
+
+    // get schema object fields
+    var objectFields ObjectFields
+    operationType := operationDefinition.OperationType
+    if operationType == frontend.OperationTypeQuery && request.Schema.Query != nil {
+        objectFields = request.Schema.GetQueryObjectFields()
+    } else if operationType == frontend.OperationTypeMutation && request.Schema.Mutation != nil {
+        objectFields = request.Schema.GetMutationObjectFields()
+    } else if operationType == frontend.OperationTypeSubscription && request.Schema.Subscription != nil {
+        objectFields = request.Schema.GetSubscriptionObjectFields()
+    } else {
+        err = errors.New("Execute(): request.Schema should have Query or Mutation or Subscription field, please check server side Schema definition.")
+        result.SetErrorInfo(err, nil)
+        return &result
+    }
+    fmt.Printf("\033[33m    [DUMP] objectFields:  \033[0m\n")
+    spewo.Dump(objectFields)
+
     // execute
     fmt.Println("\n\n\033[33m////////////////////////////////////////// Executor Start ///////////////////////////////////////\033[0m\n")
     resolvedResult, _ := resolveSelectionSet(g, request, selectionSet, objectFields, nil)
@@ -220,7 +238,7 @@ func correctJsonUnmarshalIntValue(value interface{}, variableType frontend.Type)
     return 0, errors.New("correctJsonUnmarshalIntValue(): not a IntValue.")
 }
 
-// get uset input Query Variables map?
+// build QueryVariables map from user input request.Variables
 func getQueryVariablesMap(request Request, variableDefinitions []*frontend.VariableDefinition) (map[string]interface{}, error) {
     fmt.Printf("\n")
     fmt.Printf("\033[31m[INTO] func getQueryVariablesMap  \033[0m\n")
@@ -266,6 +284,54 @@ func getQueryVariablesMap(request Request, variableDefinitions []*frontend.Varia
     return queryVariablesMap, nil
 }
 
+// build Field.Arguments map from GlobalVariables.QueryVariablesMap
+func getFieldArgumentsMap(g *GlobalVariables, arguments []*frontend.Argument) (map[string]interface{}, error) {
+    fmt.Printf("\n")
+    fmt.Printf("\033[31m[INTO] func getFieldArgumentsMap  \033[0m\n")
+    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+
+    fieldArgumentsMap := make(map[string]interface{}, len(arguments))
+    
+    for _, argument := range arguments {
+        // detect argument type & fill
+        argumentName  := argument.Name.Value
+        argumentValue := argument.Value
+        // assert Argument.Value type
+        if _, ok := argumentValue.(frontend.Variable); ok {
+            // Variable type, resolve referenced value from GlobalVariables.QueryVariablesMap
+            if matched, ok := g.QueryVariablesMap[argumentName]; ok {
+                fieldArgumentsMap[argumentName] = matched
+            } else {
+                err := "getFieldArgumentsMap(): Field.Arguments referenced variable $"+argumentName+", but it was NOT defined at OperationDefinition.VariableDefinitions, please check your GraphQL OperationDefinition syntax."
+                return nil, errors.New(err)
+            }
+        } else if val, ok := argumentValue.(frontend.IntValue); ok {
+            fieldArgumentsMap[argumentName] = val.Value
+        } else if val, ok := argumentValue.(frontend.FloatValue); ok {
+            fieldArgumentsMap[argumentName] = val.Value
+        } else if val, ok := argumentValue.(frontend.StringValue); ok {
+            fieldArgumentsMap[argumentName] = val.Value
+        } else if val, ok := argumentValue.(frontend.BooleanValue); ok {
+            fieldArgumentsMap[argumentName] = val.Value
+        } else if val, ok := argumentValue.(frontend.NullValue); ok {
+            fieldArgumentsMap[argumentName] = val.Value
+        } else if val, ok := argumentValue.(frontend.EnumValue); ok {
+            fieldArgumentsMap[argumentName] = val.Value
+        } else if val, ok := argumentValue.(frontend.ListValue); ok {
+            fieldArgumentsMap[argumentName] = val.Value
+        } else if val, ok := argumentValue.(frontend.ObjectValue); ok {
+            fieldArgumentsMap[argumentName] = val.Value
+        } else {
+            err := "getFieldArgumentsMap(): Field.Arguments.Argument type assert failed, please check your GraphQL Field.Arguments.Argument syntax."
+            return nil, errors.New(err)
+        }
+    }
+    
+    fmt.Printf("\033[33m    [DUMP] fieldArgumentsMap:  \033[0m\n")
+    spewo.Dump(fieldArgumentsMap)
+
+    return fieldArgumentsMap, nil
+}
 
 func checkIfInputArgumentsAvaliable(inputArguments map[string]interface{}, targetObjectFieldArguments *Arguments) (bool, error) {
     for argumentName, _ := range inputArguments {
@@ -278,6 +344,7 @@ func checkIfInputArgumentsAvaliable(inputArguments map[string]interface{}, targe
 }
 
 func resolveField(g *GlobalVariables, request Request, fieldName string, field *frontend.Field, objectFields ObjectFields, resolvedData interface{}) (interface{}, error) {
+    var err error
     fmt.Printf("\n")
     fmt.Printf("\033[31m[INTO] func resolveField  \033[0m\n")
     spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
@@ -304,23 +371,22 @@ func resolveField(g *GlobalVariables, request Request, fieldName string, field *
     }
     // no context resovedData input, check GraphQL Request Arguments
     if resolvedData == nil {
-        p := ResolveParams{}
-        p.Arguments = g.QueryVariablesMap
-        fmt.Printf("\033[33m    [DUMP] p.Arguments:  \033[0m\n")
-        spewo.Dump(p.Arguments)
-        resolvedData, _ = resolveFunction(p) 
-        // resolve failed
-        if resolvedData == nil {
-            err := "resolveField(): input arguments resolved, and no result return."
-            return nil, errors.New(err)
+        var resolveParams ResolveParams
+
+        // get field arguments
+        if resolveParams.Arguments, err = getFieldArgumentsMap(g, field.Arguments); err != nil {
+            return nil, err
         }
+        // pass arguments into user defined resolve function
+        if resolvedData, err = resolveFunction(resolveParams); err != nil {
+            return nil, err
+        }
+
         fmt.Printf("\033[33m    [DUMP] resolvedData:  \033[0m\n")
         spewo.Dump(resolvedData)
         // check resolvedData match input ObjectField.Type
-        if ok, error := resolvedDataTypeChecker(fieldName, resolvedData, objectFields[fieldName].Type); !ok {
-            spewo.Dump(error)
-            os.Exit(1)
-            return ok, error
+        if ok, err := resolvedDataTypeChecker(fieldName, resolvedData, objectFields[fieldName].Type); !ok {
+            return nil, err
         }
     }
     fmt.Printf("\033[33m    [DUMP] objectFields[documentFieldName]:  \033[0m\n")
@@ -341,7 +407,7 @@ func resolvedDataTypeChecker(fieldName string, resolvedData interface{}, expecte
     fmt.Printf("\n")
     fmt.Printf("\033[31m[INTO] func resolveSubField  \033[0m\n")
     errorInfo := func(fieldName string, expected string, but string) error {
-        err := "resolveField(): schema defiend ObjectField '"+fieldName+"' Type is '"+expected+"', but ResolveFunction return type is '"+but+"', please check your schema."
+        err := "resolveField(): schema defined ObjectField '"+fieldName+"' Type is '"+expected+"', but ResolveFunction return type is '"+but+"', please check your schema."
         return errors.New(err)
     }
     resolvedDataType := reflect.TypeOf(resolvedData)
@@ -664,6 +730,7 @@ type Schema struct {
     Subscription *Object 
 }
 
+
 func (schema *Schema) GetQueryObject() *Object {
     return schema.Query
 }
@@ -676,21 +743,25 @@ func (schema *Schema) GetMutationObject() *Object {
     return schema.Mutation
 }
 
+func (schema *Schema) GetMutationObjectFields() ObjectFields {
+    return schema.Mutation.Fields
+}
+
 func (schema *Schema) GetSubscriptionObject() *Object {
     return schema.Subscription
+}
+
+func (schema *Schema) GetSubscriptionObjectFields() ObjectFields {
+    return schema.Subscription.Fields
 }
 
 func NewSchema(schemaTemplate SchemaTemplate) (Schema, error) {
     schema := Schema{}
 
-    // check query
-    if schemaTemplate.Query == nil {
-        err := errors.New("SchemaTemplate.Query is not defined")
-        return schema, err
-    }
-
     // fill schema
     schema.Query = schemaTemplate.Query
+    schema.Mutation = schemaTemplate.Mutation
+    schema.Subscription = schemaTemplate.Subscription
 
 
     return schema, nil

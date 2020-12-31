@@ -100,7 +100,7 @@ var userType, _ = backend.NewObject(
     },
 )
 
-var queryType, _ = backend.NewObject(
+var queryObject, _ = backend.NewObject(
     backend.ObjectTemplate{
         Name: "Query",
         Fields: backend.ObjectFields{
@@ -212,7 +212,7 @@ var queryType, _ = backend.NewObject(
 
 var schema, _ = backend.NewSchema(
     backend.SchemaTemplate{
-        Query: queryType,
+        Query: queryObject,
     },
 )
 

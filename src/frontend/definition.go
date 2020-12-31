@@ -64,9 +64,12 @@ type OperationDefinition struct {
 }
 
 const (
-    OperationTypeQuery        = "query"
-    OperationTypeMutation     = "mutation"
-    OperationTypeSubscription = "subscription"
+    OperationTypeQuery            = TOKEN_QUERY
+    OperationTypeMutation         = TOKEN_MUTATION
+    OperationTypeSubscription     = TOKEN_SUBSCRIPTION
+    OperationTypeQueryName        = "query"
+    OperationTypeMutationName     = "mutation"
+    OperationTypeSubscriptionName = "subscription"
 )
 
 func (operationDefinition *OperationDefinition) GetDefinitionType() string {
