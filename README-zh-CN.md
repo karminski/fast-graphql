@@ -22,6 +22,7 @@ fast-graphql
 - 完成字符串序列化优化. ()
 - 完成 FragmentDefinition 的相关功能. ()
 - 完成所有 GraphQL 解析功能. ()
+- 完成测试. ()
 - 完成 GC & memory 优化. ()
 - 完成 ASM & SIMD 优化. ()
 
@@ -45,6 +46,10 @@ fast-graphql
 # Contributors
 
 - [karminski](https://github.com/karminski)
+
+# License
+
+- [MIT](./LICENSE)
 
 # Reference
 

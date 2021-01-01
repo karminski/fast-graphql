@@ -23,6 +23,7 @@ WARNING: this repo is under construction, not production-ready.
 - Finish GraphQL backend with Directive feature. ()
 - Finish GraphQL backend with full FragmentDefinition feature. ()
 - Finish GraphQL backend with full Definition feature. ()
+- Finish test case. ()
 - Finish GC & memory Optimize. ()
 - Finish ASM & SIMD Optimize. ()
 
@@ -46,6 +47,10 @@ The basic backend logic of this repo is port from [graphql-go](https://github.co
 # Contributors
 
 - [karminski](https://github.com/karminski)
+
+# License
+
+- [MIT](./LICENSE)
 
 # Reference
 

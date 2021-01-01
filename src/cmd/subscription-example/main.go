@@ -17,37 +17,13 @@ const (
     Gender_Female = "FEMALE"
 )
 
-const (
-    Country_A = "Country A"
-    Country_B = "Country B"
-    Country_C = "Country C"
-    Country_D = "Country D"
-    Country_E = "Country E"
-)
-
-const (
-    City_X1 = "City X1"
-    City_X2 = "City X2"
-    City_X3 = "City X3"
-    City_X4 = "City X4"
-    City_X5 = "City X5"
-)
-
 type User struct {
-    Id      int       `json:"id"`
-    Name    string    `json:"name"`
-    Email   string    `json:"email"`
-    Married bool      `json:"married"`
-    Height  float64   `json:"height"`
-    Gender  string    `json:"gender"`
-    Friends []int     `json:"friends"`
-    Location Location `json:"location"`
-
-}
-
-type Location struct {
-    Country string `json:"country"`
-    City    string `json:"city"`
+    Id      int   `json:"id"`
+    Name    string  `json:"name"`
+    Email   string  `json:"email"`
+    Married bool    `json:"married"`
+    Height  float64 `json:"height"`
+    Gender  string  `json:"gender"`
 }
 
 var users = []User{
@@ -58,8 +34,6 @@ var users = []User{
         Married: false,
         Height: 172.53,
         Gender: Gender_Male,
-        Friends: []int{2,3,4},
-        Location: Location{Country_A, City_X1},
     },
     {
         Id:    2,
@@ -68,8 +42,6 @@ var users = []User{
         Married: false,
         Height: 175.2,
         Gender: Gender_Female,
-        Friends: []int{1},
-        Location: Location{Country_B, City_X2},
     },
     {
         Id:    3,
@@ -78,8 +50,6 @@ var users = []User{
         Married: true,
         Height: 162.3,
         Gender: Gender_Male,
-        Friends: []int{1,4},
-        Location: Location{Country_C, City_X3},
     },
     {
         Id:    4,
@@ -88,8 +58,6 @@ var users = []User{
         Married: false,
         Height: 181.9,
         Gender: Gender_Male,
-        Friends: []int{1,3},
-        Location: Location{Country_D, City_X4},
     },
     {
         Id:    5,
@@ -98,26 +66,8 @@ var users = []User{
         Married: true,
         Height: 132.9,
         Gender: Gender_Female,
-        Friends: []int{},
-        Location: Location{Country_E, City_X5},
     },
 }
-
-var locationType, _ = backend.NewObject(
-    backend.ObjectTemplate{
-        Name: "Location",
-        Fields: backend.ObjectFields{
-            "country": &backend.ObjectField{
-                Name: "country",
-                Type: backend.String,
-            },
-            "city": &backend.ObjectField{
-                Name: "city",
-                Type: backend.String,
-            },
-        },
-    },
-)
 
 var userType, _ = backend.NewObject(
     backend.ObjectTemplate{
@@ -147,173 +97,15 @@ var userType, _ = backend.NewObject(
                 Name: "gender",
                 Type: backend.String,
             },
-            "friends": &backend.ObjectField{
-                Name: "friends",
-                Type: backend.NewList(backend.Int),
-            },
-            "Location": &backend.ObjectField{
-                Name: "Location",
-                Type: locationType,
-                ResolveFunction: func(p backend.ResolveParams) (interface{}, error) {
-                    fmt.Printf("\033[31m[INTO] func Location.ResolveFunction()  \033[0m\n")
-                    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-                    location, ok := p.Source.(Location)
-                    spewo.Dump(location)
-                    if  ok {
-                        return location, nil
-                    }
-                    return nil, errors.New("location.ResolveFunction(): can NOT resolve location from ResolveParams")
-                },
-            },
-        },
-    },
-)
-
-
-var queryObject, _ = backend.NewObject(
-    backend.ObjectTemplate{
-        Name: "Query",
-        Fields: backend.ObjectFields{
-            // field User
-            "user": &backend.ObjectField{
-                Name: "user",
-                Type: userType,
-                Description: "Get user by id",
-                Arguments: &backend.Arguments{
-                    "id": &backend.Argument{
-                        Name: "id",
-                        Type: backend.Int,
-                    },
-                    "name": &backend.Argument{
-                        Name: "name",
-                        Type: backend.String,
-                    },
-                    "married": &backend.Argument{
-                        Name: "married",
-                        Type: backend.Bool,
-                    },
-                    "height": &backend.Argument{
-                        Name: "height",
-                        Type: backend.Float,
-                    },
-                    "gender": &backend.Argument{
-                        Name: "gender",
-                        Type: backend.String,
-                    },
-                },
-                ResolveFunction: func(p backend.ResolveParams) (interface{}, error) {
-                    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-
-                    fmt.Printf("\033[33m    [INTO] user defined ResolveFunction:  \033[0m\n")
-
-                    id, ok := p.Arguments["id"].(int)
-                    spewo.Dump(id)
-
-                    if ok {
-                        intId := int(id)
-                        fmt.Printf("\033[33m    [INTO] id:  \033[0m\n")
-
-                        // Find user
-                        for _, user := range users {
-                            if int(user.Id) == intId {
-                                return user, nil
-                            }
-                        }
-                    }
-                    name, ok := p.Arguments["name"].(string)
-                    if ok {
-                        fmt.Printf("\033[33m    [INTO] name:  \033[0m\n")
-
-                        // Find user
-                        for _, user := range users {
-                            if user.Name == name {
-                                return user, nil
-                            }
-                        }
-                    }
-                    married, ok := p.Arguments["married"].(bool)
-                    if ok {
-                        fmt.Printf("\033[33m    [INTO] married:  \033[0m\n")
-                        // Find user
-                        for _, user := range users {
-                            if bool(user.Married) == married {
-                                return user, nil
-                            }
-                        }
-                    }
-                    height, ok := p.Arguments["height"].(float64)
-                    if ok {
-                        fmt.Printf("\033[33m    [INTO] height:  \033[0m\n")
-
-                        // Find user
-                        for _, user := range users {
-                            if float64(user.Height) == height {
-                                return user, nil
-                            }
-                        }
-                    }
-                    gender, ok := p.Arguments["gender"].(string)
-                    if ok {
-                        fmt.Printf("\033[33m    [INTO] gender:  \033[0m\n")
-
-                        // Find gender
-                        for _, user := range users {
-                            if user.Gender == gender {
-                                return user, nil
-                            }
-                        }
-                    }
-                    return nil, errors.New("ResolveFunction(): target data not found.")
-                },
-            },
-            // Field List
-            "list": &backend.ObjectField{
-                Name: "list",
-                Type: backend.NewList(userType),
-                Description: "Get user list",
-                ResolveFunction: func(p backend.ResolveParams) (interface{}, error) {
-                    return users, nil
-                },
-            },
-            // field friends 
-            "friends": &backend.ObjectField{
-                Name: "friends", 
-                Type: backend.NewList(userType),
-                Description: "Get user friends list",
-                ResolveFunction: func(p backend.ResolveParams) (interface{}, error) {
-                    friends, ok := p.Arguments["friends"].([]int)
-                    matchedUsers := []User{}
-                    if ok {
-                        userIdIndex := make(map[int]int, len(users))
-                        // build user id index
-                        for i, user := range users {
-                            userIdIndex[user.Id] = i
-                        }
-                        // match user
-                        for _, friendsId := range friends {
-                            i    := userIdIndex[friendsId]
-                            user := users[i]
-                            matchedUsers = append(matchedUsers, user)
-                        }
-                    }
-                    return matchedUsers, nil
-                },
-            },
-            // "location": &backend.ObjectField{
-            //     Name: "location", 
-            //     Type: locationType,
-            //     Description: "Get location type",
-            //     ResolveFunction: func(p backend.ResolveParams) (interface{}, error) {
-            //         
-            //     },
-            // },
         },
     },
 )
 
 
 
-var mutationObject, _ = backend.NewObject(
+
+
+var subscriptionObject, _ = backend.NewObject(
     backend.ObjectTemplate{
         Name: "Mutation",
         Fields: backend.ObjectFields{

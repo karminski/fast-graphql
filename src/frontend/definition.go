@@ -105,8 +105,8 @@ func (operationDefinition *OperationDefinition) IsSubscription() bool {
  *
  */
 type SelectionSet struct {
-    LineNum     int 
-    Selections  []Selection
+    LineNum      int 
+    Selections []Selection
 }
 
 func (selectionSet *SelectionSet) GetSelections() []Selection {
@@ -139,6 +139,13 @@ func (field *Field) GetSelectionSet() *SelectionSet {
     return field.SelectionSet
 }
 
+func (field *Field) GetFieldName() *Name {
+    return field.Name
+}
+
+func (field *Field) GetFieldNameString() string {
+    return field.Name.Value
+}
 
 /**
  * Alias Expression 
