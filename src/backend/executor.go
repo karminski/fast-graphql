@@ -15,7 +15,7 @@ import (
 
 )
 
-const DUMP_FRONTEND = false
+const DUMP_FRONTEND = true
 
 type Request struct {
     // GraphQL Schema config for server side
@@ -156,7 +156,11 @@ func Execute(request Request) (*Result) {
 
     // execute
     fmt.Println("\n\n\033[33m////////////////////////////////////////// Executor Start ///////////////////////////////////////\033[0m\n")
-    resolvedResult, _ := resolveSelectionSet(g, request, selectionSet, objectFields, nil)
+    var resolvedResult interface{}
+    if resolvedResult, err = resolveSelectionSet(g, request, selectionSet, objectFields, nil); err != nil {
+        result.SetErrorInfo(err, nil)
+        return &result
+    }
     fmt.Printf("\033[33m    [DUMP] resolvedResult:  \033[0m\n")
     spewo.Dump(resolvedResult)
     result.Data = resolvedResult
@@ -207,17 +211,6 @@ func resolveSelectionSet(g *GlobalVariables, request Request, selectionSet *fron
     }
     return finalResult, nil
 }
-
-
-func getResolveFunction(fieldName string, objectFields ObjectFields) ResolveFunction {
-    resolveFunction := objectFields[fieldName].ResolveFunction
-    // build in type, provide default resolve function
-    if resolveFunction == nil {
-        return nil
-    }
-    return resolveFunction
-}
-
 
 func defaultValueTypeAssertion(value interface{}) (interface{}, error) {
     // notice: the DefaultValue only accept const Value (Variables are not const Value)
@@ -385,75 +378,47 @@ func resolveField(g *GlobalVariables, request Request, fieldName string, field *
         return nil, errors.New(err)
     }
     
-    // check resolve function or extend last resolved data 
-    resolveFunction := getResolveFunction(fieldName, objectFields)
 
-    if resolveFunction == nil {
-        fmt.Printf("\033[33m    [HIT!] resolveFunction == nil  \033[0m\n")
-        resolveFunction = func (p ResolveParams) (interface{}, error) {
-            return p, nil
-        }
+    // build resolve params for resolve function
+    var resolveParams ResolveParams
+    resolveParams.Source = resolvedData
+    if resolveParams.Arguments, err = getFieldArgumentsMap(g, field.Arguments); err != nil {
+        return nil, err
     }
-    // no context resovedData input, check GraphQL Request Arguments
-    if resolvedData == nil {
-        fmt.Printf("\033[33m    [HIT!] resolvedData == nil  \033[0m\n")
 
-        var resolveParams ResolveParams
-
-        // get field arguments
-        if resolveParams.Arguments, err = getFieldArgumentsMap(g, field.Arguments); err != nil {
-            return nil, err
-        }
-        // pass arguments into user defined resolve function
-        if resolvedData, err = resolveFunction(resolveParams); err != nil {
-            return nil, err
-        }
-
-        // check resolvedData match input ObjectField.Type
-        if ok, err := resolvedDataTypeChecker(fieldName, resolvedData, objectFields[fieldName].Type); !ok {
+    // resolve
+    schemaResolveFunction := objectFields[fieldName].ResolveFunction
+    if schemaResolveFunction != nil {
+        if resolvedData, err = schemaResolveFunction(resolveParams); err != nil {
             return nil, err
         }
     } else {
-        var resolveParams ResolveParams
-        fmt.Printf("\033[33m    [DUMP] resolvedData:  \033[0m\n")
-        spewo.Dump(resolvedData)
-        fmt.Printf("\033[33m    [DUMP] fieldName:  \033[0m\n")
-        spewo.Dump(fieldName)
-        fmt.Printf("\033[33m    [DUMP] field:  \033[0m\n")
-        spewo.Dump(field)
-        resolvedData = getResolvedDataByFieldName(fieldName, resolvedData)
-        fmt.Printf("\033[33m    [DUMP] resolvedData:  \033[0m\n")
-        spewo.Dump(resolvedData)
-        
-
-        resolveParams.Source = resolvedData
-        // pass arguments into user defined resolve function
-        if resolvedData, err = resolveFunction(resolveParams); err != nil {
-            return nil, err
-        }
-        // check resolvedData match input ObjectField.Type
-        if ok, err := resolvedDataTypeChecker(fieldName, resolvedData, objectFields[fieldName].Type); !ok {
+        if resolvedData, err = defaultResolveFunction(resolveParams); err != nil {
             return nil, err
         }
     }
 
-    fmt.Printf("\033[33m    [DUMP] fieldName:  \033[0m\n")
-    spewo.Dump(fieldName)
-    fmt.Printf("\033[33m    [DUMP] objectFields[fieldName]:  \033[0m\n")
-    spewo.Dump(objectFields[fieldName])
-    fmt.Printf("\033[33m    [DUMP] resolvedData:  \033[0m\n")
-    spewo.Dump(resolvedData)
 
+    // check field.SelectionSet
+    if field.SelectionSet != nil {
+        subObjectField := getSubObjectFields(objectFields[fieldName])
+        resolvedData, err = resolveSelectionSet(g, request, field.SelectionSet, subObjectField, resolvedData)
+    }
 
-    // resolve sub-Field
-    targetSelectionSet := field.SelectionSet
-    targetObjectField := objectFields[fieldName]
-    targetObjectFieldType := objectFields[fieldName].Type
-    fmt.Printf("\033[33m    [DUMP] targetObjectFieldType:  \033[0m\n")
-    spewo.Dump(targetObjectFieldType)
-    // go
-    resolvedSubData, _ := resolveSubField(g, request, targetSelectionSet, targetObjectField, targetObjectFieldType, resolvedData)
-    return resolvedSubData, nil
+    return resolvedData, nil
+}
+
+func getSubObjectFields(objectField ObjectField) ObjectFields {
+    fieldType := objectField.Type
+    if _, ok := fieldType.(*List); ok {
+        return objectField.Type.(*List).Payload.(*Object).Fields
+    } 
+
+    if _, ok := fieldType.(*Object); ok {
+        return objectField.Type.(*Object).Fields
+    }
+
+    return nil
 }
 
 func resolvedDataTypeChecker(fieldName string, resolvedData interface{}, expectedType FieldType) (bool, error) {
@@ -494,9 +459,9 @@ func resolvedDataTypeChecker(fieldName string, resolvedData interface{}, expecte
 }
 
 
-func resolveSubField(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, targetType FieldType, resolvedData interface{}) (interface{}, error) {
+func defaultResolveFunction(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, targetType FieldType, resolvedData interface{}) (interface{}, error) {
     fmt.Printf("\n")
-    fmt.Printf("\033[31m[INTO] func resolveSubField  \033[0m\n")
+    fmt.Printf("\033[31m[INTO] func defaultResolveFunction  \033[0m\n")
     spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
     fmt.Printf("\033[33m    [DUMP] objectField:  \033[0m\n")
     spewo.Dump(objectField)
@@ -559,12 +524,12 @@ func resolveScalarData(g *GlobalVariables, request Request, selectionSet *fronte
     // call resolve function
     resolveFunction := objectField.Type.(*Scalar).ResolveFunction
     targetFieldName := objectField.Name
-    r0 := getResolvedDataByJsonTag(targetFieldName, resolvedData)
+    r0 := getResolvedDataByFieldName(targetFieldName, resolvedData)
     fmt.Printf("\033[33m    [DUMP] resolvedData result:  \033[0m\n")
     spewo.Dump(resolvedData)
     fmt.Printf("\033[33m    [DUMP] targetFieldName result:  \033[0m\n")
     spewo.Dump(targetFieldName)
-    fmt.Printf("\033[33m    [DUMP] getResolvedDataByJsonTag result:  \033[0m\n")
+    fmt.Printf("\033[33m    [DUMP] getResolvedDataByFieldName result:  \033[0m\n")
     spewo.Dump(r0)
     // convert 
     p := ResolveParams{}
@@ -631,7 +596,7 @@ func getResolvedDataByFieldName(targetFieldName string, resolvedData interface{}
 
     for i := 0; i < val.Type().NumField(); i++ {
         if val.Type().Field(i).Name == targetFieldName {
-            return reflect.Indirect(val).FieldByName(val.Type().Field(i).Name)
+            return reflect.Indirect(val).FieldByName(val.Type().Field(i).Name).Interface()
         }
     }
     return nil

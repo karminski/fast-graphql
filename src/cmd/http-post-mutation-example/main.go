@@ -107,12 +107,12 @@ var locationType, _ = backend.NewObject(
     backend.ObjectTemplate{
         Name: "Location",
         Fields: backend.ObjectFields{
-            "country": &backend.ObjectField{
-                Name: "country",
+            "Country": &backend.ObjectField{
+                Name: "Country",
                 Type: backend.String,
             },
-            "city": &backend.ObjectField{
-                Name: "city",
+            "City": &backend.ObjectField{
+                Name: "City",
                 Type: backend.String,
             },
         },
@@ -147,23 +147,36 @@ var userType, _ = backend.NewObject(
                 Name: "gender",
                 Type: backend.String,
             },
-            "friends": &backend.ObjectField{
-                Name: "friends",
+            "Friends": &backend.ObjectField{
+                Name: "Friends",
                 Type: backend.NewList(backend.Int),
+                // ResolveFunction: func(p backend.ResolveParams) (interface{}, error) {
+                //     spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+                //     fmt.Printf("\033[31m[INTO] func Friends.ResolveFunction()  \033[0m\n")
+                //     friends, ok := p.Source.([]int)
+                //     fmt.Printf("\033[33m    [DUMP] p.Arguments:  \033[0m\n")
+                //     spewo.Dump(p.Arguments)
+                //     os.Exit(1)
+                //     matchedUsers := []User{}
+                //     if ok {
+                //         userIdIndex := make(map[int]int, len(users))
+                //         // build user id index
+                //         for i, user := range users {
+                //             userIdIndex[user.Id] = i
+                //         }
+                //         // match user
+                //         for _, friendsId := range friends {
+                //             i    := userIdIndex[friendsId]
+                //             user := users[i]
+                //             matchedUsers = append(matchedUsers, user)
+                //         }
+                //     }
+                //     return matchedUsers, nil
+                // },
             },
             "Location": &backend.ObjectField{
                 Name: "Location",
                 Type: locationType,
-                ResolveFunction: func(p backend.ResolveParams) (interface{}, error) {
-                    fmt.Printf("\033[31m[INTO] func Location.ResolveFunction()  \033[0m\n")
-                    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-                    location, ok := p.Source.(Location)
-                    spewo.Dump(location)
-                    if  ok {
-                        return location, nil
-                    }
-                    return nil, errors.New("location.ResolveFunction(): can NOT resolve location from ResolveParams")
-                },
             },
         },
     },
@@ -275,38 +288,6 @@ var queryObject, _ = backend.NewObject(
                     return users, nil
                 },
             },
-            // field friends 
-            "friends": &backend.ObjectField{
-                Name: "friends", 
-                Type: backend.NewList(userType),
-                Description: "Get user friends list",
-                ResolveFunction: func(p backend.ResolveParams) (interface{}, error) {
-                    friends, ok := p.Arguments["friends"].([]int)
-                    matchedUsers := []User{}
-                    if ok {
-                        userIdIndex := make(map[int]int, len(users))
-                        // build user id index
-                        for i, user := range users {
-                            userIdIndex[user.Id] = i
-                        }
-                        // match user
-                        for _, friendsId := range friends {
-                            i    := userIdIndex[friendsId]
-                            user := users[i]
-                            matchedUsers = append(matchedUsers, user)
-                        }
-                    }
-                    return matchedUsers, nil
-                },
-            },
-            // "location": &backend.ObjectField{
-            //     Name: "location", 
-            //     Type: locationType,
-            //     Description: "Get location type",
-            //     ResolveFunction: func(p backend.ResolveParams) (interface{}, error) {
-            //         
-            //     },
-            // },
         },
     },
 )
@@ -389,7 +370,7 @@ var mutationObject, _ = backend.NewObject(
                 ResolveFunction: func(p backend.ResolveParams) (interface{}, error) {
                     id, _              := p.Arguments["id"].(int)
                     name, nameOk       := p.Arguments["name"].(string)
-                    email, emailOk       := p.Arguments["email"].(string)
+                    email, emailOk     := p.Arguments["email"].(string)
                     married, marriedOk := p.Arguments["married"].(bool)
                     height, heightOk   := p.Arguments["height"].(float64)
                     gender, genderOk   := p.Arguments["gender"].(string)
