@@ -103,6 +103,43 @@ var users = []User{
     },
 }
 
+var friendType, _ = backend.NewObject(
+    backend.ObjectTemplate{
+        Name: "Friends",
+        Fields: backend.ObjectFields{
+            "Id": &backend.ObjectField{
+                Name: "Id",
+                Type: backend.Int,
+            },
+            "Name": &backend.ObjectField{
+                Name: "Name",
+                Type: backend.String,
+            },
+            "Email": &backend.ObjectField{
+                Name: "Email",
+                Type: backend.String,
+            },
+            "Married": &backend.ObjectField{
+                Name: "Married",
+                Type: backend.Bool,
+            },
+            "Height": &backend.ObjectField{
+                Name: "Height",
+                Type: backend.Float,
+            },
+            "Gender": &backend.ObjectField{
+                Name: "Gender",
+                Type: backend.String,
+            },
+            "Location": &backend.ObjectField{
+                Name: "Location",
+                Type: locationType,
+            },
+        },
+    },
+)
+
+
 var locationType, _ = backend.NewObject(
     backend.ObjectTemplate{
         Name: "Location",
@@ -123,56 +160,59 @@ var userType, _ = backend.NewObject(
     backend.ObjectTemplate{
         Name: "User",
         Fields: backend.ObjectFields{
-            "id": &backend.ObjectField{
-                Name: "id",
+            "Id": &backend.ObjectField{
+                Name: "Id",
                 Type: backend.Int,
             },
-            "name": &backend.ObjectField{
-                Name: "name",
+            "Name": &backend.ObjectField{
+                Name: "Name",
                 Type: backend.String,
             },
-            "email": &backend.ObjectField{
-                Name: "email",
+            "Email": &backend.ObjectField{
+                Name: "Email",
                 Type: backend.String,
             },
-            "married": &backend.ObjectField{
-                Name: "married",
+            "Married": &backend.ObjectField{
+                Name: "Married",
                 Type: backend.Bool,
             },
-            "height": &backend.ObjectField{
-                Name: "height",
+            "Height": &backend.ObjectField{
+                Name: "Height",
                 Type: backend.Float,
             },
-            "gender": &backend.ObjectField{
-                Name: "gender",
+            "Gender": &backend.ObjectField{
+                Name: "Gender",
                 Type: backend.String,
             },
             "Friends": &backend.ObjectField{
                 Name: "Friends",
-                Type: backend.NewList(backend.Int),
-                // ResolveFunction: func(p backend.ResolveParams) (interface{}, error) {
-                //     spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-                //     fmt.Printf("\033[31m[INTO] func Friends.ResolveFunction()  \033[0m\n")
-                //     friends, ok := p.Source.([]int)
-                //     fmt.Printf("\033[33m    [DUMP] p.Arguments:  \033[0m\n")
-                //     spewo.Dump(p.Arguments)
-                //     os.Exit(1)
-                //     matchedUsers := []User{}
-                //     if ok {
-                //         userIdIndex := make(map[int]int, len(users))
-                //         // build user id index
-                //         for i, user := range users {
-                //             userIdIndex[user.Id] = i
-                //         }
-                //         // match user
-                //         for _, friendsId := range friends {
-                //             i    := userIdIndex[friendsId]
-                //             user := users[i]
-                //             matchedUsers = append(matchedUsers, user)
-                //         }
-                //     }
-                //     return matchedUsers, nil
-                // },
+                Type: backend.NewList(friendType),
+                ResolveFunction: func(p backend.ResolveParams) (interface{}, error) {
+                    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+                    fmt.Printf("\033[31m[INTO] func Friends.ResolveFunction()  \033[0m\n")
+                    spewo.Dump(p)
+                   // convert source input
+                    var user User 
+                    var ok   bool
+                    if user, ok = p.Source.(User); !ok {
+                        return nil, errors.New("func Friends.Resolve() can not resolve p.Source.")
+                    }
+                    friends := user.Friends
+                    matchedUsers := []User{}
+                    // get friends
+                    userIdIndex := make(map[int]int, len(users))
+                    // build user id index
+                    for i, user := range users {
+                        userIdIndex[user.Id] = i
+                    }
+                    // match user
+                    for _, friendsId := range friends {
+                        i    := userIdIndex[friendsId]
+                        user := users[i]
+                        matchedUsers = append(matchedUsers, user)
+                    }
+                    return matchedUsers, nil
+                },
             },
             "Location": &backend.ObjectField{
                 Name: "Location",
@@ -188,28 +228,28 @@ var queryObject, _ = backend.NewObject(
         Name: "Query",
         Fields: backend.ObjectFields{
             // field User
-            "user": &backend.ObjectField{
-                Name: "user",
+            "User": &backend.ObjectField{
+                Name: "User",
                 Type: userType,
                 Description: "Get user by id",
                 Arguments: &backend.Arguments{
-                    "id": &backend.Argument{
+                    "Id": &backend.Argument{
                         Name: "id",
                         Type: backend.Int,
                     },
-                    "name": &backend.Argument{
+                    "Name": &backend.Argument{
                         Name: "name",
                         Type: backend.String,
                     },
-                    "married": &backend.Argument{
+                    "Married": &backend.Argument{
                         Name: "married",
                         Type: backend.Bool,
                     },
-                    "height": &backend.Argument{
+                    "Height": &backend.Argument{
                         Name: "height",
                         Type: backend.Float,
                     },
-                    "gender": &backend.Argument{
+                    "Gender": &backend.Argument{
                         Name: "gender",
                         Type: backend.String,
                     },
@@ -219,7 +259,7 @@ var queryObject, _ = backend.NewObject(
 
                     fmt.Printf("\033[33m    [INTO] user defined ResolveFunction:  \033[0m\n")
 
-                    id, ok := p.Arguments["id"].(int)
+                    id, ok := p.Arguments["Id"].(int)
                     spewo.Dump(id)
 
                     if ok {
@@ -233,7 +273,7 @@ var queryObject, _ = backend.NewObject(
                             }
                         }
                     }
-                    name, ok := p.Arguments["name"].(string)
+                    name, ok := p.Arguments["Name"].(string)
                     if ok {
                         fmt.Printf("\033[33m    [INTO] name:  \033[0m\n")
 
@@ -244,7 +284,7 @@ var queryObject, _ = backend.NewObject(
                             }
                         }
                     }
-                    married, ok := p.Arguments["married"].(bool)
+                    married, ok := p.Arguments["Married"].(bool)
                     if ok {
                         fmt.Printf("\033[33m    [INTO] married:  \033[0m\n")
                         // Find user
@@ -254,7 +294,7 @@ var queryObject, _ = backend.NewObject(
                             }
                         }
                     }
-                    height, ok := p.Arguments["height"].(float64)
+                    height, ok := p.Arguments["Height"].(float64)
                     if ok {
                         fmt.Printf("\033[33m    [INTO] height:  \033[0m\n")
 
@@ -265,7 +305,7 @@ var queryObject, _ = backend.NewObject(
                             }
                         }
                     }
-                    gender, ok := p.Arguments["gender"].(string)
+                    gender, ok := p.Arguments["Gender"].(string)
                     if ok {
                         fmt.Printf("\033[33m    [INTO] gender:  \033[0m\n")
 

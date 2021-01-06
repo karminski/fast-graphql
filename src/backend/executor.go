@@ -15,7 +15,7 @@ import (
 
 )
 
-const DUMP_FRONTEND = true
+const DUMP_FRONTEND = false
 
 type Request struct {
     // GraphQL Schema config for server side
@@ -184,11 +184,26 @@ func getSelectionSetFields(selectionSet *frontend.SelectionSet) (map[string]*fro
     return fields, nil
 }
 
+func getSubObjectFields(objectField *ObjectField) ObjectFields {
+    fmt.Printf("\033[31m[INTO] func getSubObjectFields():  \033[0m\n")
 
+    fieldType := objectField.Type
+    if _, ok := fieldType.(*List); ok {
+        return objectField.Type.(*List).Payload.(*Object).Fields
+    } 
+
+    if _, ok := fieldType.(*Object); ok {
+        return objectField.Type.(*Object).Fields
+    }
+
+    return nil
+}
 
 func resolveSelectionSet(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectFields ObjectFields, resolvedData interface{}) (interface{}, error) {
     fmt.Printf("\n")
     fmt.Printf("\033[31m[INTO] func resolveSelectionSet  \033[0m\n")
+    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+
 
     if selectionSet == nil {
         return nil, errors.New("resolveSelectionSet(): empty selectionSet input.")
@@ -197,13 +212,16 @@ func resolveSelectionSet(g *GlobalVariables, request Request, selectionSet *fron
     selections  := selectionSet.GetSelections()
     finalResult := make(map[string]interface{}, len(selections))
 
-    // resolve SelectionSet.Selections
+    fmt.Printf("\033[33m    [DUMP] objectFields:  \033[0m\n")
+    spewo.Dump(objectFields)
 
+    // resolve SelectionSet.Selections
     var resolvedResult interface{}
     var err            error
     for _, selection := range selections {
         field     := selection.(*frontend.Field)
         fieldName := field.GetFieldNameString()
+        // resolve
         if resolvedResult, err = resolveField(g, request, fieldName, field, objectFields, resolvedData); err != nil {
             return nil, err
         }
@@ -360,6 +378,8 @@ func checkIfInputArgumentsAvaliable(inputArguments map[string]interface{}, targe
     return true, nil
 }
 
+
+
 func resolveField(g *GlobalVariables, request Request, fieldName string, field *frontend.Field, objectFields ObjectFields, resolvedData interface{}) (interface{}, error) {
     fmt.Printf("\n")
     fmt.Printf("\033[31m[INTO] func resolveField  \033[0m\n")
@@ -374,52 +394,61 @@ func resolveField(g *GlobalVariables, request Request, fieldName string, field *
     var err error
 
     if _, ok := objectFields[fieldName]; !ok {
-        err := "resolveField(): input document field name "+fieldName+" does not defined in schema."
+        err := "resolveField(): input document field name '"+fieldName+"' does not match schema."
         return nil, errors.New(err)
     }
     
-
-    // build resolve params for resolve function
-    var resolveParams ResolveParams
-    resolveParams.Source = resolvedData
-    if resolveParams.Arguments, err = getFieldArgumentsMap(g, field.Arguments); err != nil {
-        return nil, err
-    }
-
+    
     // resolve
-    schemaResolveFunction := objectFields[fieldName].ResolveFunction
-    if schemaResolveFunction != nil {
-        if resolvedData, err = schemaResolveFunction(resolveParams); err != nil {
+    if schemaResolveFunctionAvaliable(fieldName, objectFields) {
+        // execute schema resolve function
+        if resolvedData, err = schemaResolveFunction(g, request, fieldName, field, objectFields, resolvedData); err != nil {
             return nil, err
         }
-    } else {
-        if resolvedData, err = defaultResolveFunction(resolveParams); err != nil {
-            return nil, err
-        }
-    }
+    } 
 
-
-    // check field.SelectionSet
-    if field.SelectionSet != nil {
-        subObjectField := getSubObjectFields(objectFields[fieldName])
-        resolvedData, err = resolveSelectionSet(g, request, field.SelectionSet, subObjectField, resolvedData)
+    if resolvedData, err = defaultResolveFunction(g, request, field.SelectionSet, objectFields[fieldName], resolvedData); err != nil {
+        return nil, err
     }
 
     return resolvedData, nil
 }
 
-func getSubObjectFields(objectField ObjectField) ObjectFields {
-    fieldType := objectField.Type
-    if _, ok := fieldType.(*List); ok {
-        return objectField.Type.(*List).Payload.(*Object).Fields
-    } 
+func schemaResolveFunctionAvaliable(fieldName string, objectFields ObjectFields) bool {
+    if objectFields[fieldName].ResolveFunction != nil {
+        return true
+    }
+    return false
+}
 
-    if _, ok := fieldType.(*Object); ok {
-        return objectField.Type.(*Object).Fields
+func schemaResolveFunction(g *GlobalVariables, request Request, fieldName string, field *frontend.Field, objectFields ObjectFields, resolvedData interface{}) (interface{}, error) {
+    fmt.Printf("\033[31m[INTO] func schemaResolveFunction():  \033[0m\n")
+    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+
+
+    // build resolve params for resolve function
+    var resolveParams ResolveParams
+    var err           error
+    resolveParams.Source = resolvedData
+    if resolveParams.Arguments, err = getFieldArgumentsMap(g, field.Arguments); err != nil {
+        return nil, err
     }
 
-    return nil
+    // get resolve function
+    resolveFunction := objectFields[fieldName].ResolveFunction
+
+    // execute
+    if resolvedData, err = resolveFunction(resolveParams); err != nil {
+        return nil, err
+    }
+
+    fmt.Printf("\033[33m    [DUMP] resolvedData:  \033[0m\n")
+    spewo.Dump(resolvedData)
+
+    return resolvedData, err
 }
+
+
 
 func resolvedDataTypeChecker(fieldName string, resolvedData interface{}, expectedType FieldType) (bool, error) {
     fmt.Printf("\n")
@@ -459,29 +488,62 @@ func resolvedDataTypeChecker(fieldName string, resolvedData interface{}, expecte
 }
 
 
-func defaultResolveFunction(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, targetType FieldType, resolvedData interface{}) (interface{}, error) {
+func defaultResolveFunction(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
     fmt.Printf("\n")
     fmt.Printf("\033[31m[INTO] func defaultResolveFunction  \033[0m\n")
     spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
     fmt.Printf("\033[33m    [DUMP] objectField:  \033[0m\n")
     spewo.Dump(objectField)
     fmt.Printf("\033[33m    [DUMP] targetType:  \033[0m\n")
+    targetType := objectField.Type
     spewo.Dump(targetType)
     // get resolve target type
-
-    if _, ok := targetType.(*List); ok {
-        return resolveListData(g, request, selectionSet, objectField, resolvedData)
-    } 
 
     if _, ok := targetType.(*Scalar); ok {
         return resolveScalarData(g, request, selectionSet, objectField, resolvedData)
     }
 
+    if _, ok := targetType.(*List); ok {
+        return resolveListData(g, request, selectionSet, objectField, resolvedData)
+    } 
+
     if _, ok := targetType.(*Object); ok {
         return resolveObjectData(g, request, selectionSet, objectField, resolvedData)
     }
-    return nil, nil
+    return nil, errors.New("defaultResolveFunction(): can not resolve target field.")
     
+}
+
+func resolveScalarData(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
+    fmt.Printf("\n")
+    fmt.Printf("\033[31m[INTO] func resolveScalarData  \033[0m\n")
+    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+
+    fmt.Printf("\033[33m    [DUMP] selectionSet:  \033[0m\n")
+    spewo.Dump(selectionSet)
+    fmt.Printf("\033[33m    [DUMP] objectField:  \033[0m\n")
+    spewo.Dump(objectField)
+    fmt.Printf("\033[33m    [DUMP] resolvedData:  \033[0m\n")
+    spewo.Dump(resolvedData)
+
+    // call resolve function
+    targetFieldName := objectField.Name
+    r0 := getResolvedDataByFieldName(targetFieldName, resolvedData)
+    fmt.Printf("\033[33m    [DUMP] r0 result:  \033[0m\n")
+    spewo.Dump(resolvedData)
+    fmt.Printf("\033[33m    [DUMP] targetFieldName result:  \033[0m\n")
+    spewo.Dump(targetFieldName)
+    fmt.Printf("\033[33m    [DUMP] getResolvedDataByFieldName result:  \033[0m\n")
+    spewo.Dump(r0)
+    return r0, nil
+    // // convert 
+    // resolveFunction := objectField.Type.(*Scalar).ResolveFunction
+    // p := ResolveParams{}
+    // p.Context = r0
+    // r1, _ := resolveFunction(p)
+    // fmt.Printf("\033[43;37m    [DUMP] resolveFunction result:  \033[0m\n")
+    // spewo.Dump(r1)
+    // return r1, nil
 }
 
 func resolveListData(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
@@ -491,8 +553,10 @@ func resolveListData(g *GlobalVariables, request Request, selectionSet *frontend
 
     resolvedDataValue := reflect.ValueOf(resolvedData)
     targetObjectFields := objectField.Type.(*List).Payload.(*Object).Fields
+
     // allocate space for list data returns
     finalResult := make([]interface{}, 0, resolvedDataValue.Len())
+
     // traverse list
     for i:=0; i<resolvedDataValue.Len(); i++ {
         resolvedDataElement := resolvedDataValue.Index(i).Interface()
@@ -509,37 +573,6 @@ func resolveListData(g *GlobalVariables, request Request, selectionSet *frontend
     return finalResult, nil
 }
 
-func resolveScalarData(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
-    fmt.Printf("\n")
-    fmt.Printf("\033[31m[INTO] func resolveScalarData  \033[0m\n")
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-
-    fmt.Printf("\033[33m    [DUMP] selectionSet:  \033[0m\n")
-    spewo.Dump(selectionSet)
-    fmt.Printf("\033[33m    [DUMP] objectField:  \033[0m\n")
-    spewo.Dump(objectField)
-    fmt.Printf("\033[33m    [DUMP] resolvedData:  \033[0m\n")
-    spewo.Dump(resolvedData)
-
-    // call resolve function
-    resolveFunction := objectField.Type.(*Scalar).ResolveFunction
-    targetFieldName := objectField.Name
-    r0 := getResolvedDataByFieldName(targetFieldName, resolvedData)
-    fmt.Printf("\033[33m    [DUMP] resolvedData result:  \033[0m\n")
-    spewo.Dump(resolvedData)
-    fmt.Printf("\033[33m    [DUMP] targetFieldName result:  \033[0m\n")
-    spewo.Dump(targetFieldName)
-    fmt.Printf("\033[33m    [DUMP] getResolvedDataByFieldName result:  \033[0m\n")
-    spewo.Dump(r0)
-    // convert 
-    p := ResolveParams{}
-    p.Context = r0
-    r1, _ := resolveFunction(p)
-    fmt.Printf("\033[43;37m    [DUMP] resolveFunction result:  \033[0m\n")
-    spewo.Dump(r1)
-    return r1, nil
-}
-
 func resolveObjectData(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
     fmt.Printf("\n")
     fmt.Printf("\033[31m[INTO] func resolveObjectData  \033[0m\n")
@@ -552,6 +585,16 @@ func resolveObjectData(g *GlobalVariables, request Request, selectionSet *fronte
     spewo.Dump(objectField)
     fmt.Printf("\033[33m    [DUMP] resolvedData:  \033[0m\n")
     spewo.Dump(resolvedData)
+
+    // check if object type schema need default resolve function to get data
+    // @todo: add a check method for situations that can be ignored
+    r0 := getResolvedDataByFieldName(objectField.Name, resolvedData)
+    fmt.Printf("\033[33m    [DUMP] r0:  \033[0m\n")
+    spewo.Dump(r0)
+    if r0 != nil {
+        resolvedData = r0
+    }
+
 
     // go
     targetObjectFields := objectField.Type.(*Object).Fields
