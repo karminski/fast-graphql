@@ -7,8 +7,10 @@ import (
     "io/ioutil"
     "math/rand"
     "fast-graphql/src/backend"
+    "fast-graphql/src/frontend"
     "github.com/davecgh/go-spew/spew"
     "errors"
+    "strconv"
     // "os"
 )
 
@@ -207,8 +209,10 @@ var userType, _ = backend.NewObject(
                     }
                     // match user
                     for _, friendsId := range friends {
-                        i    := userIdIndex[friendsId]
-                        user := users[i]
+                        var user User
+                        if i, ok    := userIdIndex[friendsId]; ok {
+                            user = users[i]
+                        }
                         matchedUsers = append(matchedUsers, user)
                     }
                     return matchedUsers, nil
@@ -343,37 +347,71 @@ var mutationObject, _ = backend.NewObject(
                 Type: userType,
                 Description: "create new user",
                 Arguments: &backend.Arguments{
-                    "name": &backend.Argument{
-                        Name: "name",
+                    "Name": &backend.Argument{
+                        Name: "Name",
                         Type: backend.String,
                     },
-                    "email": &backend.Argument{
-                        Name: "email",
+                    "Email": &backend.Argument{
+                        Name: "Email",
                         Type: backend.String,
                     },
-                    "married": &backend.Argument{
-                        Name: "married",
+                    "Married": &backend.Argument{
+                        Name: "Married",
                         Type: backend.Bool,
                     },
-                    "height": &backend.Argument{
-                        Name: "height",
+                    "Height": &backend.Argument{
+                        Name: "Height",
                         Type: backend.Float,
                     },
-                    "gender": &backend.Argument{
-                        Name: "gender",
+                    "Gender": &backend.Argument{
+                        Name: "Gender",
                         Type: backend.String,
+                    },
+                    "Friends": &backend.Argument{
+                        Name: "Friends",
+                        Type: backend.NewList(backend.Int),
+                    },
+                    "Location": &backend.Argument{
+                        Name: "Location",
+                        Type: locationType,
                     },
                 },
                 ResolveFunction: func(p backend.ResolveParams) (interface{}, error) {
+                    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+                    fmt.Printf("\033[33m    [INTO] create ResolveFunction():  \033[0m\n")
+                    fmt.Printf("\033[33m    [DUMP] p.Arguments:  \033[0m\n")
+                    spewo.Dump(p.Arguments)
+                    // fill friends
+                    assertedFriends := p.Arguments["Friends"].([]frontend.Value)
+                    friends := make([]int, len(assertedFriends))
+                    for i, n := range assertedFriends {
+                        friends[i] = n.(frontend.IntValue).Value
+                    }
+                    // fill location
+                    var location Location
+                    assertedLocation := p.Arguments["Location"].([]*frontend.ObjectField)
+                    for _, n := range assertedLocation {
+                        if n.Name.Value == "City" {
+                            location.City = n.Value.(frontend.StringValue).Value
+                        }
+                        if n.Name.Value == "Country" {
+                            location.Country = n.Value.(frontend.StringValue).Value
+                        }
+                    }
+                    // fill user
                     user := User{
                         Id: rand.Intn(1000),
-                        Name: p.Arguments["name"].(string),
-                        Email: p.Arguments["email"].(string),
-                        Married: p.Arguments["married"].(bool),
-                        Height: p.Arguments["height"].(float64),
-                        Gender: p.Arguments["gender"].(string),
+                        Name: p.Arguments["Name"].(string),
+                        Email: p.Arguments["Email"].(string),
+                        Married: p.Arguments["Married"].(bool),
+                        Height: p.Arguments["Height"].(float64),
+                        Gender: p.Arguments["Gender"].(string),
+                        Friends: friends,
+                        Location: location,
                     }
                     users = append(users, user)
+                    fmt.Printf("\033[33m    [DUMP] user:  \033[0m\n")
+                    spewo.Dump(user)
                     return user, nil
                 },
             },
@@ -382,38 +420,73 @@ var mutationObject, _ = backend.NewObject(
                 Type: userType,
                 Description: "update user info",
                 Arguments: &backend.Arguments{
-                    "id": &backend.Argument{
-                        Name: "id",
+                    "Id": &backend.Argument{
+                        Name: "Id",
                         Type: backend.Int,
                     },
-                    "name": &backend.Argument{
-                        Name: "name",
+                    "Name": &backend.Argument{
+                        Name: "Name",
                         Type: backend.String,
                     },
-                    "email": &backend.Argument{
-                        Name: "email",
+                    "Email": &backend.Argument{
+                        Name: "Email",
                         Type: backend.String,
                     },
-                    "married": &backend.Argument{
-                        Name: "married",
+                    "Married": &backend.Argument{
+                        Name: "Married",
                         Type: backend.Bool,
                     },
-                    "height": &backend.Argument{
-                        Name: "height",
+                    "Height": &backend.Argument{
+                        Name: "Height",
                         Type: backend.Float,
                     },
-                    "gender": &backend.Argument{
-                        Name: "gender",
+                    "Gender": &backend.Argument{
+                        Name: "Gender",
                         Type: backend.String,
+                    },
+                    "Friends": &backend.Argument{
+                        Name: "Friends",
+                        Type: backend.NewList(backend.Int),
+                    },
+                    "Location": &backend.Argument{
+                        Name: "Location",
+                        Type: locationType,
                     },
                 },
                 ResolveFunction: func(p backend.ResolveParams) (interface{}, error) {
-                    id, _              := p.Arguments["id"].(int)
-                    name, nameOk       := p.Arguments["name"].(string)
-                    email, emailOk     := p.Arguments["email"].(string)
-                    married, marriedOk := p.Arguments["married"].(bool)
-                    height, heightOk   := p.Arguments["height"].(float64)
-                    gender, genderOk   := p.Arguments["gender"].(string)
+                    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+                    fmt.Printf("\033[33m    [INTO] update ResolveFunction():  \033[0m\n")
+                    // base info
+                    id, _                := p.Arguments["Id"].(int)
+                    name, nameOk         := p.Arguments["Name"].(string)
+                    email, emailOk       := p.Arguments["Email"].(string)
+                    married, marriedOk   := p.Arguments["Married"].(bool)
+                    height, heightOk     := p.Arguments["Height"].(float64)
+                    gender, genderOk     := p.Arguments["Gender"].(string)
+                    // extend info
+                    // fill friends
+                    var friends []int
+                    friendsOk := false
+                    if assertedFriends, ok := p.Arguments["Friends"].([]frontend.Value); ok {
+                        for _, n := range assertedFriends {
+                            friends = append(friends, n.(frontend.IntValue).Value)
+                        }
+                        friendsOk = true
+                    }
+                    // fill location
+                    var location Location
+                    locationOk := false
+                    if assertedLocation, ok := p.Arguments["Location"].([]*frontend.ObjectField); ok {
+                        for _, n := range assertedLocation {
+                            if n.Name.Value == "City" {
+                                location.City = n.Value.(frontend.StringValue).Value
+                            }
+                            if n.Name.Value == "Country" {
+                                location.Country = n.Value.(frontend.StringValue).Value
+                            }
+                        }
+                        locationOk = true
+                    }
                     // find target user and update
                     target := 0
                     for i, user := range users {
@@ -434,8 +507,17 @@ var mutationObject, _ = backend.NewObject(
                             if genderOk {
                                 users[i].Gender = gender
                             }
+                            if friendsOk {
+                                users[i].Friends = friends
+                            }
+                            if locationOk {
+                                users[i].Location = location
+                            }
                         }
                     }
+                    fmt.Printf("\033[33m    [DUMP] users[target]:  \033[0m\n")
+                    spewo.Dump(users[target])
+
                     return users[target], nil
                 },
             },
@@ -444,21 +526,29 @@ var mutationObject, _ = backend.NewObject(
                 Type: userType,
                 Description: "delete user by id",
                 Arguments: &backend.Arguments{
-                    "id": &backend.Argument{
-                        Name: "id",
+                    "Id": &backend.Argument{
+                        Name: "Id",
                         Type: backend.Int,
                     },
                 },
                 ResolveFunction: func(p backend.ResolveParams) (interface{}, error) {
-                    id, _ := p.Arguments["id"].(int)
+
+                    fmt.Printf("\033[33m    [INTO] delete ResolveFunction():  \033[0m\n")
+
+                    id, _ := p.Arguments["Id"].(int)
                     // find target user and update
                     targetUser := User{}
+                    hit := false
                     for i, user := range users {
                         if user.Id == id {
+                            hit = true
                             targetUser = user
                             // remove user
                             users = append(users[:i], users[i+1:]...)
                         }
+                    }
+                    if !hit {
+                        return nil, errors.New("ResolveFunction(): target user(Id:"+ strconv.Itoa(id)+") not found, can not delete.")
                     }
                     return targetUser, nil
                 },
