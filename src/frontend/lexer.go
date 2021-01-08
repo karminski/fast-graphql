@@ -128,9 +128,40 @@ var keywords = map[string]int{
     "on"           : TOKEN_ON,
 }
 
+var avaliableNumberParts = map[byte]bool{
+    '0': true,
+    '1': true,
+    '2': true,
+    '3': true,
+    '4': true,
+    '5': true,
+    '6': true,
+    '7': true,
+    '8': true,
+    '9': true,
+    '-': true,
+    'x': true,
+    'X': true, 
+    '.': true,
+    '+': true,
+    'p': true, 
+    'P': true, 
+    'a': true,
+    'b': true, 
+    'c': true, 
+    'd': true, 
+    'e': true, 
+    'f': true, 
+    'A': true,
+    'B': true, 
+    'C': true, 
+    'D': true, 
+    'E': true, 
+    'F': true,
+}
+
 // regex match patterns
 var regexNumber     = regexp.MustCompile(`^0[xX][0-9a-fA-F]*(\.[0-9a-fA-F]*)?([pP][+\-]?[0-9]+)?|^[-]?[0-9]*(\.[0-9]*)?([eE][+\-]?[0-9]+)?`)
-var regexIdentifier = regexp.MustCompile(`^[_\d\w]+`)
 
 // lexer struct
 type Lexer struct {
@@ -186,7 +217,13 @@ func (lexer *Lexer) LookAhead() int {
 }
 
 func (lexer *Lexer) nextDocumentIs(s string) bool {
-    return strings.HasPrefix(lexer.document, s)
+    slen := len(s)
+    for i := 0; i < slen; i++ {
+        if lexer.document[i] != s[i] {
+            return false
+        } 
+    }
+    return true
 }
 
 func (lexer *Lexer) skipDocument(n int) {
@@ -264,11 +301,44 @@ func (lexer *Lexer) scanBeforeToken(token string) string {
 }
 
 func (lexer *Lexer) scanNumber() string {
-    return lexer.scan(regexNumber)
+    docLen := len(lexer.document)
+    for i := 0; i< docLen; i++ {
+        c := lexer.document[i] 
+        if _, ok := avaliableNumberParts[c]; ok {
+            continue
+        } else {
+            target := lexer.document[:i]
+            lexer.skipDocument(i)
+            return target
+        }
+    }
+    panic("unreachable!")
+    return ""
 }
 
+func isDigit(c byte) bool {
+    return c >= '0' && c <= '9'
+}
+
+func isLetter(c byte) bool {
+    return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z'
+}
+
+
 func (lexer *Lexer) scanIdentifier() string {
-    return lexer.scan(regexIdentifier)
+    docLen := len(lexer.document)
+    for i := 0; i< docLen; i++ {
+        c := lexer.document[i] 
+        if c == '_' || isLetter(c) || isDigit(c) {
+            continue
+        } else {
+            target := lexer.document[:i]
+            lexer.skipDocument(i)
+            return target
+        }
+    }
+    panic("unreachable!")
+    return ""
 }
 
 
@@ -378,13 +448,4 @@ func (lexer *Lexer) MatchToken() (lineNum int, tokenType int, token string) {
 }
 
 
-
-
-func isDigit(c byte) bool {
-    return c >= '0' && c <= '9'
-}
-
-func isLetter(c byte) bool {
-    return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z'
-}
 
