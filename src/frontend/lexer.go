@@ -152,7 +152,6 @@ func (lexer *Lexer) GetLineNum() int {
 func (lexer *Lexer) NextTokenIs(tokenType int) (lineNum int, token string) {
 
     nowLineNum, nowTokenType, nowToken := lexer.GetNextToken()
-    fmt.Printf("    lexer.NextTokenIs( expect:'%v'==>'%v' -> Got:'%v'==>'%v' )\n", tokenType, tokenNameMap[tokenType], nowTokenType, tokenNameMap[nowTokenType])
     // syntax error
     if tokenType != nowTokenType {
         fmt.Println("\n\n\033[05m\033[41;37m                    OOOOOOOOOPS! TOKEN EXCEPT FAILED                    \033[0m\n")
@@ -172,24 +171,17 @@ func (lexer *Lexer) NextTokenIs(tokenType int) (lineNum int, token string) {
 
 func (lexer *Lexer) LookAhead() int {
     // lexer.nextToken* already setted
-    // fmt.Printf("\033[36mLookAhead().lexer.nextTokenLineNum: %v\033[0m\n", lexer.nextTokenLineNum)
     if lexer.nextTokenLineNum > 0 {
-    // fmt.Printf("\033[36mLookAhead().lexer.nextTokenType: %v : %v\033[0m\n", lexer.nextTokenType, tokenNameMap[lexer.nextTokenType])
-
         return lexer.nextTokenType
     }
     // set it
     nowLineNum                := lexer.lineNum
-    // fmt.Printf("\033[36mLookAhead().lineNum: %v \033[0m\n", lexer.lineNum)
-
     lineNum, tokenType, token := lexer.GetNextToken()
-    // fmt.Printf("\033[36mLookAhead().lineNum: %v \033[0m\n", lexer.lineNum)
     
     lexer.lineNum              = nowLineNum
     lexer.nextTokenLineNum     = lineNum
     lexer.nextTokenType        = tokenType
     lexer.nextToken            = token
-    // fmt.Printf("\033[36mLookAhead().tokenType: %v : %v\033[0m\n", tokenType, tokenNameMap[tokenType])
     return tokenType
 }
 
@@ -302,7 +294,6 @@ func (lexer *Lexer) MatchToken() (lineNum int, tokenType int, token string) {
     if len(lexer.document) == 0 {
         return lexer.lineNum, TOKEN_EOF, tokenNameMap[TOKEN_EOF]
     }
-    fmt.Printf("now lexer: %c\n", lexer.document[0])
     // check token
     switch lexer.document[0] {
     case '!' :

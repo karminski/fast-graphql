@@ -10,6 +10,7 @@ import (
     "fast-graphql/src/frontend"
     "errors"
     "strconv"
+    _ "net/http/pprof"
     // "os"
 )
 
@@ -558,7 +559,11 @@ func main() {
         // HTTP Post method
         var decodedVariables map[string]interface{}
         body, _ := ioutil.ReadAll(r.Body)
-        json.Unmarshal([]byte(body), &decodedVariables)
+        err := json.Unmarshal([]byte(body), &decodedVariables)
+
+        if err != nil {
+            fmt.Println(err)
+        }
 
         var variables map[string]interface{}
         query     := decodedVariables["query"].(string)
@@ -573,12 +578,10 @@ func main() {
         w.Header().Set("content-type","text/json")
         json.NewEncoder(w).Encode(result)
     })
-    fmt.Printf("START.\n")
 
-    fmt.Println("Server is running on port 8081")
-    http.ListenAndServe("127.0.0.1:8081", nil)
+    // run     
+    http.ListenAndServe("0.0.0.0:8081", nil)
 
-    fmt.Printf("EXIT. \n")
 }
 
 

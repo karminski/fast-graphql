@@ -3,16 +3,10 @@
 package frontend
 
 import (
-    // "regexp"
     "strings"
-    // "strconv"
     "fmt"
-    // "os"
     "strconv"
     "errors"
-
-    // "github.com/davecgh/go-spew/spew"
-
 )
 
 
@@ -39,8 +33,6 @@ import (
  *
  */
 func parseName(lexer *Lexer) (*Name, error) {
-    fmt.Printf("\033[31m[INTO] func parseName  \033[0m\n")
-
     lineNum, _, token := lexer.GetNextToken()
     for _, b := range []rune(token) {
         if (b == '_' || 
@@ -57,8 +49,6 @@ func parseName(lexer *Lexer) (*Name, error) {
 }
 
 func parseNumberValue(lexer *Lexer) (Value, error) {
-    fmt.Printf("\033[31m[INTO] func parseNumberValue  \033[0m\n")
-
     var isFloat = func(token string) bool {
         i := strings.Index(token, ".")
         if i < 0 {
@@ -111,9 +101,6 @@ func parseStringValue(lexer *Lexer) (StringValue, error) {
  * 
  */
 func parseDocument(lexer *Lexer) (*Document, error) {
-    fmt.Println("\n\n\033[33m////////////////////////////////////////// Parser Start ///////////////////////////////////////\033[0m\n")
-    fmt.Printf("\033[31m[INTO] func parseDocument  \033[0m\n")
-
     var document Document
     var err      error
 
@@ -141,8 +128,6 @@ func isDocumentEnd(tokenType int) bool {
  *
  */
 func parseDefinitions(lexer *Lexer) ([]Definition, error) {
-    fmt.Printf("\033[31m[INTO] func parseDefinitions  \033[0m\n")
-
     var definitions []Definition
     for !isDocumentEnd(lexer.LookAhead()) {
         var definition Definition
@@ -150,15 +135,12 @@ func parseDefinitions(lexer *Lexer) ([]Definition, error) {
         if definition, err = parseDefinition(lexer); err != nil {
             return nil, err
         }
-        fmt.Printf("- definitions ------\n%v\n", definition)
         definitions = append(definitions, definition)
     }   
     return definitions, nil
 }
 
 func parseDefinition(lexer *Lexer) (Definition, error) {
-    fmt.Printf("\033[31m[INTO] func parseDefinition  \033[0m\n")
-    
     switch lexer.LookAhead() {
     /**
      * Definition: 
@@ -228,8 +210,6 @@ func parseDefinition(lexer *Lexer) (Definition, error) {
  *
  */
 func parseOperationDefinition(lexer *Lexer) (*OperationDefinition, error) {
-    fmt.Printf("\033[31m[INTO] func parseOperationDefinition  \033[0m\n")
-
     var operationDefinition OperationDefinition
     var err                 error
 
@@ -274,9 +254,8 @@ func parseOperationDefinition(lexer *Lexer) (*OperationDefinition, error) {
 }
 
 func parseOperationType(lexer *Lexer) (int, string) {
-    fmt.Printf("\033[31m[INTO] func parseOperationType  \033[0m\n")
-
     var operation int
+
     switch lexer.LookAhead() {
     case TOKEN_QUERY:        // operation "query"
         lexer.NextTokenIs(TOKEN_QUERY)
@@ -301,8 +280,6 @@ func parseOperationType(lexer *Lexer) (int, string) {
  * 
  */
 func parseSelectionSet(lexer *Lexer) (*SelectionSet, error) {
-    fmt.Printf("\033[31m[INTO] func parseSelectionSet  \033[0m\n")
-
     var selectionSet SelectionSet
 
     // LineNum
@@ -324,8 +301,6 @@ func parseSelectionSet(lexer *Lexer) (*SelectionSet, error) {
 }
 
 func parseSelection(lexer *Lexer) (interface{}, error) {
-    fmt.Printf("\033[31m[INTO] func parseSelection  \033[0m\n")
-
     switch lexer.LookAhead() {
     case TOKEN_DOTS:
         lexer.NextTokenIs(TOKEN_DOTS)
@@ -348,8 +323,6 @@ func parseSelection(lexer *Lexer) (interface{}, error) {
  * 
  */
 func parseField(lexer *Lexer) (*Field, error) {
-    fmt.Printf("\033[31m[INTO] func parseField  \033[0m\n")
-
     var field           Field
     var err             error
 
@@ -388,11 +361,9 @@ func parseField(lexer *Lexer) (*Field, error) {
 
     // SelectionSet
     if lexer.LookAhead() == TOKEN_LEFT_BRACE {
-        fmt.Printf("\033[33m into more SelectionSet: \033[0m\n")
         if field.SelectionSet, err = parseSelectionSet(lexer); err != nil {
             return nil, err
         }
-        fmt.Printf("\033[33m out more SelectionSet: \033[0m\n")
     }
     return &field, nil
 }
@@ -404,8 +375,6 @@ func parseField(lexer *Lexer) (*Field, error) {
  *
  */
 func parseArguments(lexer *Lexer) ([]*Argument, error) {
-    fmt.Printf("\033[31m[INTO] func parseArguments  \033[0m\n")
-
     var arguments []*Argument
     var argument    *Argument
     var err          error 
@@ -422,8 +391,6 @@ func parseArguments(lexer *Lexer) ([]*Argument, error) {
 }
 
 func parseArgument(lexer *Lexer) (*Argument, error) {
-    fmt.Printf("\033[31m[INTO] func parseArgument  \033[0m\n")
-
     var argument Argument
     var err      error
 
@@ -452,8 +419,6 @@ func parseArgument(lexer *Lexer) (*Argument, error) {
  *
  */
 func parseFragmentSpread(lexer *Lexer) (*FragmentSpread, error) {
-    fmt.Printf("\033[31m[INTO] func parseFragmentSpread  \033[0m\n")
-
     var fragmentSpread FragmentSpread
     var err            error
 
@@ -472,8 +437,6 @@ func parseFragmentSpread(lexer *Lexer) (*FragmentSpread, error) {
 }
 
 func parseInlineFragment(lexer *Lexer) (*InlineFragment, error) {
-    fmt.Printf("\033[31m[INTO] func parseInlineFragment  \033[0m\n")
-
     var inlineFragment InlineFragment
     var err            error
 
@@ -499,8 +462,6 @@ func parseInlineFragment(lexer *Lexer) (*InlineFragment, error) {
 
 
 func parseFragmentDefinition(lexer *Lexer) (*FragmentDefinition, error) {
-    fmt.Printf("\033[31m[INTO] func parseFragmentDefinition  \033[0m\n")
-
     var fragmentDefinition FragmentDefinition
     var err                error
 
@@ -528,8 +489,6 @@ func parseFragmentDefinition(lexer *Lexer) (*FragmentDefinition, error) {
 }
 
 func parseFragmentName(lexer *Lexer) (*Name, error) {
-    fmt.Printf("\033[31m[INTO] func parseFragmentName  \033[0m\n")
-
     var name *Name
     var err   error
     shouldNotBe := map[string]bool{tokenNameMap[TOKEN_ON]: true}
@@ -546,8 +505,6 @@ func parseFragmentName(lexer *Lexer) (*Name, error) {
 }
 
 func parseTypeCondition(lexer *Lexer) (*Name, error) {
-    fmt.Printf("\033[31m[INTO] func parseTypeCondition  \033[0m\n")
-
     var name *Name 
     var err   error
 
@@ -573,10 +530,9 @@ func parseTypeCondition(lexer *Lexer) (*Name, error) {
  *
  */
 func parseValue(lexer *Lexer) (Value, error) {
-    fmt.Printf("\033[31m[INTO] func parseValue  \033[0m\n")
-
     var value Value
     var err error
+
     token := lexer.LookAhead()
     switch token {
     case TOKEN_VAR_PREFIX:  // Variable, start with "$"
@@ -635,8 +591,6 @@ func parseValue(lexer *Lexer) (Value, error) {
 }
 
 func parseBooleanValue(lexer *Lexer) (BooleanValue, error) {
-    fmt.Printf("\033[31m[INTO] func parseBooleanValue  \033[0m\n")
-
     if lexer.LookAhead() == TOKEN_TRUE {
         lexer.NextTokenIs(TOKEN_TRUE)
         return BooleanValue{lexer.GetLineNum(), true}, nil
@@ -646,15 +600,11 @@ func parseBooleanValue(lexer *Lexer) (BooleanValue, error) {
 }
 
 func parseNullValue(lexer *Lexer) (NullValue, error) {
-    fmt.Printf("\033[31m[INTO] func parseNullValue  \033[0m\n")
-
     lexer.NextTokenIs(TOKEN_NULL)
     return NullValue{lexer.GetLineNum(), nil}, nil
 }
 
 func parseEnumValue(lexer *Lexer) (EnumValue, error) {
-    fmt.Printf("\033[31m[INTO] func parseBooleanValue  \033[0m\n")
-
     var enumValue EnumValue
     var err       error
     shouldNotBe := map[string]bool{tokenNameMap[TOKEN_TRUE]: true, tokenNameMap[TOKEN_FALSE]: true, tokenNameMap[TOKEN_NULL]: true}
@@ -673,8 +623,6 @@ func parseEnumValue(lexer *Lexer) (EnumValue, error) {
 }
 
 func parseListValue(lexer *Lexer) (ListValue, error) {
-    fmt.Printf("\033[31m[INTO] func parseListValue  \033[0m\n")
-
     var listValue ListValue
 
     // "["
@@ -697,8 +645,6 @@ func parseListValue(lexer *Lexer) (ListValue, error) {
 }
 
 func parseObjectValue(lexer *Lexer) (ObjectValue, error) {
-    fmt.Printf("\033[31m[INTO] func parseObjectValue  \033[0m\n")
-
     var objectValue ObjectValue
 
     // "{"
@@ -721,8 +667,6 @@ func parseObjectValue(lexer *Lexer) (ObjectValue, error) {
 }
 
 func parseObjectField(lexer *Lexer) (*ObjectField, error) {
-    fmt.Printf("\033[31m[INTO] func parseObjectField  \033[0m\n")
-
     var objectField ObjectField
     var err         error
 
@@ -749,8 +693,6 @@ func parseObjectField(lexer *Lexer) (*ObjectField, error) {
  *
  */
 func parseVariableDefinitions(lexer *Lexer) ([]*VariableDefinition, error) {
-    fmt.Printf("\033[31m[INTO] func parseVariableDefinitions  \033[0m\n")
-
     var VariableDefinitions []*VariableDefinition
 
     // "("
@@ -773,8 +715,6 @@ func parseVariableDefinitions(lexer *Lexer) ([]*VariableDefinition, error) {
 }
 
 func parseVariableDefinition(lexer *Lexer) (*VariableDefinition, error) {
-    fmt.Printf("\033[31m[INTO] func parseVariableDefinition  \033[0m\n")
-
     var variableDefinition VariableDefinition
     var err                error
 
@@ -800,8 +740,6 @@ func parseVariableDefinition(lexer *Lexer) (*VariableDefinition, error) {
 }
 
 func parseVariable(lexer *Lexer) (Variable, error) {
-    fmt.Printf("\033[31m[INTO] func parseVariable  \033[0m\n")
-
     // "$"
     lexer.NextTokenIs(TOKEN_VAR_PREFIX)
     
@@ -810,8 +748,6 @@ func parseVariable(lexer *Lexer) (Variable, error) {
 }
 
 func parseDefaultValue(lexer *Lexer) (Value, error) {
-    fmt.Printf("\033[31m[INTO] func parseDefaultValue  \033[0m\n")
-
     var value Value 
     var err   error
 
@@ -834,8 +770,6 @@ func parseDefaultValue(lexer *Lexer) (Value, error) {
  *
  */
 func parseType(lexer *Lexer) (Type, error) {
-    fmt.Printf("\033[31m[INTO] func parseType  \033[0m\n")
-
     var typeRet Type
     var err     error
 
@@ -876,8 +810,6 @@ func parseNamedType(lexer *Lexer) (*NamedType, error) {
 }  
 
 func parseListType(lexer *Lexer) (ListType, error) {
-    fmt.Printf("\033[31m[INTO] func parseListType  \033[0m\n")
-
     var listType ListType
 
     // "["
@@ -900,7 +832,6 @@ func parseListType(lexer *Lexer) (ListType, error) {
 }
 
 func parseNonNullType(lexer *Lexer, previousType Type) (NonNullType, error) {
-    fmt.Printf("\033[31m[INTO] func parseNonNullType  \033[0m\n")
     // "!"
     lexer.NextTokenIs(TOKEN_NOT_NULL)
     return NonNullType{lexer.GetLineNum(), previousType}, nil
@@ -914,8 +845,6 @@ func parseNonNullType(lexer *Lexer, previousType Type) (NonNullType, error) {
  *
  */
 func parseDirectives(lexer *Lexer) ([]*Directive, error) {
-    fmt.Printf("\033[31m[INTO] func parseDirectives  \033[0m\n")
-
     var directives []*Directive
     
     // Directive+
@@ -931,8 +860,6 @@ func parseDirectives(lexer *Lexer) ([]*Directive, error) {
 }
 
 func parseDirective(lexer *Lexer) (*Directive, error) {
-    fmt.Printf("\033[31m[INTO] func parseDirective  \033[0m\n")
-
     var directive Directive
     var err       error
 
@@ -960,8 +887,6 @@ func parseDirective(lexer *Lexer) (*Directive, error) {
  *
  */
 func parseTypeSystemDefinition(lexer *Lexer) (Definition, error) {
-    fmt.Printf("\033[31m[INTO] func parseTypeSystemDefinition  \033[0m\n")
-
     var description StringValue 
 
     // Description
@@ -1094,8 +1019,6 @@ var parseDescription = parseStringValue
  *
  */
 func parseSchemaDefinition(lexer *Lexer) (*SchemaDefinition, error) {
-    fmt.Printf("\033[31m[INTO] func parseSchemaDefinition  \033[0m\n")
-
     var schemaDefinition SchemaDefinition
     var err              error
 
@@ -1126,8 +1049,6 @@ func parseSchemaDefinition(lexer *Lexer) (*SchemaDefinition, error) {
 }
 
 func parseSchemaExtension(lexer *Lexer) (*SchemaExtension, error) {
-    fmt.Printf("\033[31m[INTO] func parseSchemaExtension  \033[0m\n")
-
     var schemaExtension SchemaExtension
     var err             error
 
@@ -1167,8 +1088,6 @@ func parseSchemaExtension(lexer *Lexer) (*SchemaExtension, error) {
  *
  */
 func parseOperationTypeDefinition(lexer *Lexer) (*OperationTypeDefinition, error) {
-    fmt.Printf("\033[31m[INTO] func parseOperationTypeDefinition  \033[0m\n")
-
     var operationTypeDefinition OperationTypeDefinition
     var err                     error
 
@@ -1203,8 +1122,6 @@ func parseOperationTypeDefinition(lexer *Lexer) (*OperationTypeDefinition, error
  *
  */
 func parseScalarTypeDefinition(lexer *Lexer) (*ScalarTypeDefinition, error) {
-    fmt.Printf("\033[31m[INTO] func parseScalarTypeDefinition  \033[0m\n")
-
     var scalarTypeDefinition ScalarTypeDefinition
     var err                  error
 
@@ -1227,8 +1144,6 @@ func parseScalarTypeDefinition(lexer *Lexer) (*ScalarTypeDefinition, error) {
 }
 
 func parseScalarTypeExtension(lexer *Lexer) (*ScalarTypeExtension, error) {
-    fmt.Printf("\033[31m[INTO] func parseScalarTypeExtension  \033[0m\n")
-
     var scalarTypeExtension ScalarTypeExtension
     var err                  error
 
@@ -1257,8 +1172,6 @@ func parseScalarTypeExtension(lexer *Lexer) (*ScalarTypeExtension, error) {
  *
  */
 func parseObjectTypeDefinition(lexer *Lexer) (*ObjectTypeDefinition, error) {
-    fmt.Printf("\033[31m[INTO] func parseObjectTypeDefinition  \033[0m\n")
-
     var objectTypeDefinition ObjectTypeDefinition
     var err                  error
 
@@ -1293,8 +1206,6 @@ func parseObjectTypeDefinition(lexer *Lexer) (*ObjectTypeDefinition, error) {
 }
 
 func parseObjectTypeExtension(lexer *Lexer) (*ObjectTypeExtension, error) {
-    fmt.Printf("\033[31m[INTO] func parseObjectTypeDefinition  \033[0m\n")
-
     var objectTypeExtension ObjectTypeExtension
     var err                  error
 
@@ -1334,8 +1245,6 @@ func parseObjectTypeExtension(lexer *Lexer) (*ObjectTypeExtension, error) {
  *
  */
 func parseImplementsInterfaces(lexer *Lexer) (*ImplementsInterfaces, error) {
-    fmt.Printf("\033[31m[INTO] func parseImplementsInterfaces  \033[0m\n")
-
     var implementsInterfaces ImplementsInterfaces
 
     // LineNum
@@ -1372,8 +1281,6 @@ func parseImplementsInterfaces(lexer *Lexer) (*ImplementsInterfaces, error) {
  *
  */
 func parseInterfaceTypeDefinition(lexer *Lexer) (*InterfaceTypeDefinition, error) {
-    fmt.Printf("\033[31m[INTO] func parseInterfaceTypeDefinition  \033[0m\n")
-
     var interfaceTypeDefinition InterfaceTypeDefinition
     var err                     error
 
@@ -1402,8 +1309,6 @@ func parseInterfaceTypeDefinition(lexer *Lexer) (*InterfaceTypeDefinition, error
 }
 
 func parseInterfaceTypeExtension(lexer *Lexer) (*InterfaceTypeExtension, error) {
-    fmt.Printf("\033[31m[INTO] func parseInterfaceTypeExtension  \033[0m\n")
-
     var interfaceTypeExtension InterfaceTypeExtension
     var err                    error
 
@@ -1442,8 +1347,6 @@ func parseInterfaceTypeExtension(lexer *Lexer) (*InterfaceTypeExtension, error) 
  */
 
 func parseUnionTypeDefinition(lexer *Lexer) (*UnionTypeDefinition, error) {
-    fmt.Printf("\033[31m[INTO] func parseUnionTypeDefinition  \033[0m\n")
-
     var unionTypeDefinition UnionTypeDefinition
     var err                 error
 
@@ -1472,8 +1375,6 @@ func parseUnionTypeDefinition(lexer *Lexer) (*UnionTypeDefinition, error) {
 }
 
 func parseUnionMemberTypes(lexer *Lexer) (*UnionMemberTypes, error) {
-    fmt.Printf("\033[31m[INTO] func parseUnionMemberTypes  \033[0m\n")
-
     var unionMemberTypes UnionMemberTypes
 
     // LineNum
@@ -1500,8 +1401,6 @@ func parseUnionMemberTypes(lexer *Lexer) (*UnionMemberTypes, error) {
 }
 
 func parseUnionTypeExtension(lexer *Lexer) (*UnionTypeExtension, error) {
-    fmt.Printf("\033[31m[INTO] func parseUnionTypeExtension  \033[0m\n")
-
     var unionTypeExtension UnionTypeExtension
     var err                error
 
@@ -1538,8 +1437,6 @@ func parseUnionTypeExtension(lexer *Lexer) (*UnionTypeExtension, error) {
  *
  */
 func parseEnumTypeDefinition(lexer *Lexer) (*EnumTypeDefinition, error) {
-    fmt.Printf("\033[31m[INTO] func parseEnumTypeDefinition  \033[0m\n")
-
     var enumTypeDefinition EnumTypeDefinition
     var err                error
 
@@ -1589,8 +1486,6 @@ func parseEnumValuesDefinition(lexer *Lexer) ([]*EnumValueDefinition, error) {
 }
 
 func parseEnumValueDefinition(lexer *Lexer) (*EnumValueDefinition, error) {
-    fmt.Printf("\033[31m[INTO] func parseEnumValueDefinition  \033[0m\n")
-
     var enumValueDefinition EnumValueDefinition
     var err                 error
 
@@ -1612,8 +1507,6 @@ func parseEnumValueDefinition(lexer *Lexer) (*EnumValueDefinition, error) {
 }
 
 func parseEnumTypeExtension(lexer *Lexer) (*EnumTypeExtension, error) {
-    fmt.Printf("\033[31m[INTO] func parseEnumTypeExtension  \033[0m\n")
-
     var enumTypeExtension EnumTypeExtension
     var err               error
 
@@ -1648,8 +1541,6 @@ func parseEnumTypeExtension(lexer *Lexer) (*EnumTypeExtension, error) {
  *
  */
 func parseInputObjectTypeDefinition(lexer *Lexer) (*InputObjectTypeDefinition, error) {
-    fmt.Printf("\033[31m[INTO] func parseInputObjectTypeDefinition  \033[0m\n")
-
     var inputObjectTypeDefinition InputObjectTypeDefinition
     var err                       error
 
@@ -1699,8 +1590,6 @@ func parseInputFieldsDefinition(lexer *Lexer) ([]*InputValueDefinition, error) {
 }
 
 func parseInputObjectTypeExtension(lexer *Lexer) (*InputObjectTypeExtension, error) {
-    fmt.Printf("\033[31m[INTO] func parseInputObjectTypeExtension  \033[0m\n")
-
     var inputObjectTypeExtension InputObjectTypeExtension
     var err                      error
 
@@ -1738,8 +1627,6 @@ func parseInputObjectTypeExtension(lexer *Lexer) (*InputObjectTypeExtension, err
  *
  */
 func parseDirectiveDefinition(lexer *Lexer) (*DirectiveDefinition, error) {
-    fmt.Printf("\033[31m[INTO] func parseDirectiveDefinition  \033[0m\n")
-
     var directiveDefinition DirectiveDefinition
     var err                 error
 
@@ -1770,8 +1657,6 @@ func parseDirectiveDefinition(lexer *Lexer) (*DirectiveDefinition, error) {
 }
 
 func parseDirectiveLocations(lexer *Lexer) ([]string, error) {
-    fmt.Printf("\033[31m[INTO] func parseDirectiveLocations  \033[0m\n")
-
     var directiveLocations []string
 
     // DirectiveLocations
@@ -1795,8 +1680,6 @@ func parseDirectiveLocations(lexer *Lexer) ([]string, error) {
 }
 
 func parseDirectiveLocation(lexer *Lexer) (string, error) {
-    fmt.Printf("\033[31m[INTO] func parseDirectiveLocation  \033[0m\n")
-
     executableDirectiveLocation := map[string]bool{
         "QUERY": true,
         "MUTATION": true,
@@ -1836,8 +1719,6 @@ func parseDirectiveLocation(lexer *Lexer) (string, error) {
  *
  */
 func parseFieldsDefinition(lexer *Lexer) ([]*FieldDefinition, error) {
-    fmt.Printf("\033[31m[INTO] func parseFieldsDefinition  \033[0m\n")
-
     var fieldsDefinition []*FieldDefinition
 
     // "{"
@@ -1857,8 +1738,6 @@ func parseFieldsDefinition(lexer *Lexer) ([]*FieldDefinition, error) {
 }
 
 func parseFieldDefinition(lexer *Lexer) (*FieldDefinition, error) {
-    fmt.Printf("\033[31m[INTO] func parseFieldDefinition  \033[0m\n")
-
     var fieldDefinition FieldDefinition
     var err             error
 
@@ -1899,8 +1778,6 @@ func parseFieldDefinition(lexer *Lexer) (*FieldDefinition, error) {
  *
  */
 func parseArgumentsDefinition(lexer *Lexer) (ArgumentsDefinition, error) {
-    fmt.Printf("\033[31m[INTO] func parseArgumentsDefinition  \033[0m\n")
-
     var argumentsDefinition ArgumentsDefinition
 
     // "("
@@ -1920,8 +1797,6 @@ func parseArgumentsDefinition(lexer *Lexer) (ArgumentsDefinition, error) {
 }
 
 func parseInputValueDefinition(lexer *Lexer) (*InputValueDefinition, error) {
-     fmt.Printf("\033[31m[INTO] func parseInputValueDefinition  \033[0m\n")
-
     var inputValueDefinition InputValueDefinition
     var err                  error
 

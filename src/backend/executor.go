@@ -10,8 +10,8 @@ import (
     "encoding/json"
 
     // "strconv"
-    "os"
-    "github.com/davecgh/go-spew/spew"
+    // "os"
+
 
 )
 
@@ -59,19 +59,14 @@ func (result *Result) SetErrorInfo(err error, errorLocation *ErrorLocation) {
 }
 
 func DecodeVariables(inputVariables string) (map[string]interface{}, error) {
-    fmt.Printf("\n")
-    fmt.Printf("\033[31m[INTO] func DecodeVariables  \033[0m\n")
-
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-
     var decodedVariables map[string]interface{}
+
     // no variables inputed
     if inputVariables == "" {
         return nil, nil
     }
     err := json.Unmarshal([]byte(inputVariables), &decodedVariables)
-    fmt.Printf("\033[33m    [DUMP] decodedVariables:  \033[0m\n")
-    spewo.Dump(decodedVariables)
+
     if err != nil {
         err := "executeQuery(): user input variables decode failed, please check input variables json syntax." 
         return nil, errors.New(err)
@@ -95,30 +90,20 @@ func Execute(request Request) (*Result) {
     result := Result{} 
     g      := NewGlobalVariables()
 
-    // debugging
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-
     // process input
     if document, err = frontend.Compile(request.Query); err != nil {
         result.SetErrorInfo(err, nil)
         return &result
     }
 
+    // if DUMP_FRONTEND {
+    //     spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+    //     spewo.Dump(document)
+    //     os.Exit(1)
+    // }
+
     // @todo: THE DOCUMENT NEED VALIDATE!
     
-    if DUMP_FRONTEND {
-        fmt.Printf("\n")
-        fmt.Printf("\033[33m    [DUMP] Document:  \033[0m\n")
-        spewo.Dump(document)
-        if true {
-            result.Data = document
-            return &result
-        }
-        fmt.Printf("\033[33m    [DUMP] Request:  \033[0m\n")
-        spewo.Dump(request)
-        os.Exit(1)
-    }
-
     // get top layer SelectionSet.Fields and request.Schema.ObjectFields
     var operationDefinition *frontend.OperationDefinition
     if operationDefinition, err = document.GetOperationDefinition(); err != nil {
@@ -130,12 +115,8 @@ func Execute(request Request) (*Result) {
     if g.QueryVariablesMap, err = getQueryVariablesMap(request, operationDefinition.VariableDefinitions); err != nil {
         result.SetErrorInfo(err, nil)
         return &result
-    }
-    fmt.Printf("\033[33m    [DUMP] g.QueryVariablesMap:  \033[0m\n")
-    spewo.Dump(g.QueryVariablesMap)
-
+    }    
     selectionSet := operationDefinition.SelectionSet
-    // selectionSetFields := getSelectionSetFields(selectionSet)
 
     // get schema object fields
     var objectFields ObjectFields
@@ -151,18 +132,14 @@ func Execute(request Request) (*Result) {
         result.SetErrorInfo(err, nil)
         return &result
     }
-    fmt.Printf("\033[33m    [DUMP] objectFields:  \033[0m\n")
-    spewo.Dump(objectFields)
-
+    
     // execute
-    fmt.Println("\n\n\033[33m////////////////////////////////////////// Executor Start ///////////////////////////////////////\033[0m\n")
     var resolvedResult interface{}
     if resolvedResult, err = resolveSelectionSet(g, request, selectionSet, objectFields, nil); err != nil {
         result.SetErrorInfo(err, nil)
         return &result
     }
-    fmt.Printf("\033[33m    [DUMP] resolvedResult:  \033[0m\n")
-    spewo.Dump(resolvedResult)
+    
     result.Data = resolvedResult
     return &result
 }
@@ -172,8 +149,7 @@ func Execute(request Request) (*Result) {
 
 // get name mapped Fields from SelectionSet
 func getSelectionSetFields(selectionSet *frontend.SelectionSet) (map[string]*frontend.Field, error) {
-    fields := make(map[string]*frontend.Field)
-
+    fields     := make(map[string]*frontend.Field)
     selections := selectionSet.GetSelections()
 
     for _, selection := range selections {
@@ -185,9 +161,8 @@ func getSelectionSetFields(selectionSet *frontend.SelectionSet) (map[string]*fro
 }
 
 func getSubObjectFields(objectField *ObjectField) ObjectFields {
-    fmt.Printf("\033[31m[INTO] func getSubObjectFields():  \033[0m\n")
-
     fieldType := objectField.Type
+
     if _, ok := fieldType.(*List); ok {
         return objectField.Type.(*List).Payload.(*Object).Fields
     } 
@@ -200,20 +175,12 @@ func getSubObjectFields(objectField *ObjectField) ObjectFields {
 }
 
 func resolveSelectionSet(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectFields ObjectFields, resolvedData interface{}) (interface{}, error) {
-    fmt.Printf("\n")
-    fmt.Printf("\033[31m[INTO] func resolveSelectionSet  \033[0m\n")
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-
-
     if selectionSet == nil {
         return nil, errors.New("resolveSelectionSet(): empty selectionSet input.")
     }
 
     selections  := selectionSet.GetSelections()
     finalResult := make(map[string]interface{}, len(selections))
-
-    fmt.Printf("\033[33m    [DUMP] objectFields:  \033[0m\n")
-    spewo.Dump(objectFields)
 
     // resolve SelectionSet.Selections
     var resolvedResult interface{}
@@ -275,13 +242,6 @@ func correctJsonUnmarshalIntValue(value interface{}, variableType frontend.Type)
 
 // build QueryVariables map from user input request.Variables
 func getQueryVariablesMap(request Request, variableDefinitions []*frontend.VariableDefinition) (map[string]interface{}, error) {
-    fmt.Printf("\n")
-    fmt.Printf("\033[31m[INTO] func getQueryVariablesMap  \033[0m\n")
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-
-    fmt.Printf("\033[33m    [DUMP] variableDefinitions:  \033[0m\n")
-    spewo.Dump(variableDefinitions)
-
     var err error
     queryVariablesMap := make(map[string]interface{}, len(variableDefinitions))
     
@@ -313,18 +273,11 @@ func getQueryVariablesMap(request Request, variableDefinitions []*frontend.Varia
         }
     }
     
-    fmt.Printf("\033[33m    [DUMP] queryVariablesMap:  \033[0m\n")
-    spewo.Dump(queryVariablesMap)
-
     return queryVariablesMap, nil
 }
 
 // build Field.Arguments map from GlobalVariables.QueryVariablesMap
 func getFieldArgumentsMap(g *GlobalVariables, arguments []*frontend.Argument) (map[string]interface{}, error) {
-    fmt.Printf("\n")
-    fmt.Printf("\033[31m[INTO] func getFieldArgumentsMap  \033[0m\n")
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-
     fieldArgumentsMap := make(map[string]interface{}, len(arguments))
     
     for _, argument := range arguments {
@@ -362,9 +315,6 @@ func getFieldArgumentsMap(g *GlobalVariables, arguments []*frontend.Argument) (m
         }
     }
     
-    fmt.Printf("\033[33m    [DUMP] fieldArgumentsMap:  \033[0m\n")
-    spewo.Dump(fieldArgumentsMap)
-
     return fieldArgumentsMap, nil
 }
 
@@ -381,23 +331,12 @@ func checkIfInputArgumentsAvaliable(inputArguments map[string]interface{}, targe
 
 
 func resolveField(g *GlobalVariables, request Request, fieldName string, field *frontend.Field, objectFields ObjectFields, resolvedData interface{}) (interface{}, error) {
-    fmt.Printf("\n")
-    fmt.Printf("\033[31m[INTO] func resolveField  \033[0m\n")
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-    fmt.Printf("\033[33m    [DUMP] fieldName:  \033[0m\n")
-    spewo.Dump(fieldName)
-    fmt.Printf("\033[33m    [DUMP] field:  \033[0m\n")
-    spewo.Dump(field)
-    fmt.Printf("\033[33m    [DUMP] objectFields:  \033[0m\n")
-    spewo.Dump(objectFields)
-
     var err error
 
     if _, ok := objectFields[fieldName]; !ok {
         err := "resolveField(): input document field name '"+fieldName+"' does not match schema."
         return nil, errors.New(err)
     }
-    
     
     // resolve
     if schemaResolveFunctionAvaliable(fieldName, objectFields) {
@@ -422,10 +361,6 @@ func schemaResolveFunctionAvaliable(fieldName string, objectFields ObjectFields)
 }
 
 func schemaResolveFunction(g *GlobalVariables, request Request, fieldName string, field *frontend.Field, objectFields ObjectFields, resolvedData interface{}) (interface{}, error) {
-    fmt.Printf("\033[31m[INTO] func schemaResolveFunction():  \033[0m\n")
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-
-
     // build resolve params for resolve function
     var resolveParams ResolveParams
     var err           error
@@ -442,17 +377,12 @@ func schemaResolveFunction(g *GlobalVariables, request Request, fieldName string
         return nil, err
     }
 
-    fmt.Printf("\033[33m    [DUMP] resolvedData:  \033[0m\n")
-    spewo.Dump(resolvedData)
-
     return resolvedData, err
 }
 
 
 
 func resolvedDataTypeChecker(fieldName string, resolvedData interface{}, expectedType FieldType) (bool, error) {
-    fmt.Printf("\n")
-    fmt.Printf("\033[31m[INTO] func resolvedDataTypeChecker  \033[0m\n")
     errorInfo := func(fieldName string, expected string, but string) error {
         err := "resolvedDataTypeChecker(): schema defined ObjectField '"+fieldName+"' Type is '"+expected+"', but ResolveFunction return type is '"+but+"', please check your schema."
         return errors.New(err)
@@ -489,16 +419,9 @@ func resolvedDataTypeChecker(fieldName string, resolvedData interface{}, expecte
 
 
 func defaultResolveFunction(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
-    fmt.Printf("\n")
-    fmt.Printf("\033[31m[INTO] func defaultResolveFunction  \033[0m\n")
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-    fmt.Printf("\033[33m    [DUMP] objectField:  \033[0m\n")
-    spewo.Dump(objectField)
-    fmt.Printf("\033[33m    [DUMP] targetType:  \033[0m\n")
     targetType := objectField.Type
-    spewo.Dump(targetType)
+    
     // get resolve target type
-
     if _, ok := targetType.(*Scalar); ok {
         return resolveScalarData(g, request, selectionSet, objectField, resolvedData)
     }
@@ -515,42 +438,21 @@ func defaultResolveFunction(g *GlobalVariables, request Request, selectionSet *f
 }
 
 func resolveScalarData(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
-    fmt.Printf("\n")
-    fmt.Printf("\033[31m[INTO] func resolveScalarData  \033[0m\n")
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-
-    fmt.Printf("\033[33m    [DUMP] selectionSet:  \033[0m\n")
-    spewo.Dump(selectionSet)
-    fmt.Printf("\033[33m    [DUMP] objectField:  \033[0m\n")
-    spewo.Dump(objectField)
-    fmt.Printf("\033[33m    [DUMP] resolvedData:  \033[0m\n")
-    spewo.Dump(resolvedData)
-
     // call resolve function
     targetFieldName := objectField.Name
     r0 := getResolvedDataByFieldName(targetFieldName, resolvedData)
-    fmt.Printf("\033[33m    [DUMP] r0 result:  \033[0m\n")
-    spewo.Dump(resolvedData)
-    fmt.Printf("\033[33m    [DUMP] targetFieldName result:  \033[0m\n")
-    spewo.Dump(targetFieldName)
-    fmt.Printf("\033[33m    [DUMP] getResolvedDataByFieldName result:  \033[0m\n")
-    spewo.Dump(r0)
     return r0, nil
     // // convert 
     // resolveFunction := objectField.Type.(*Scalar).ResolveFunction
     // p := ResolveParams{}
     // p.Context = r0
     // r1, _ := resolveFunction(p)
-    // fmt.Printf("\033[43;37m    [DUMP] resolveFunction result:  \033[0m\n")
-    // spewo.Dump(r1)
+    // 
+    // 
     // return r1, nil
 }
 
 func resolveListData(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
-    fmt.Printf("\n")
-    fmt.Printf("\033[31m[INTO] func resolveListData  \033[0m\n")
-    // spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-
     resolvedDataValue := reflect.ValueOf(resolvedData)
     targetObjectFields := objectField.Type.(*List).Payload.(*Object).Fields
 
@@ -560,12 +462,6 @@ func resolveListData(g *GlobalVariables, request Request, selectionSet *frontend
     // traverse list
     for i:=0; i<resolvedDataValue.Len(); i++ {
         resolvedDataElement := resolvedDataValue.Index(i).Interface()
-        // fmt.Printf("\033[33m    [DUMP] resolvedDataElement:  \033[0m\n")
-        // spewo.Dump(resolvedDataElement)
-        // fmt.Printf("\033[33m    [DUMP] objectField:  \033[0m\n")
-        // spewo.Dump(objectField)
-        // fmt.Printf("\033[33m    [DUMP] selectionSet:  \033[0m\n")
-        // spewo.Dump(selectionSet)
         // execute
         selectionSetResult, _ := resolveSelectionSet(g, request, selectionSet, targetObjectFields, resolvedDataElement)
         finalResult = append(finalResult, selectionSetResult)
@@ -574,27 +470,13 @@ func resolveListData(g *GlobalVariables, request Request, selectionSet *frontend
 }
 
 func resolveObjectData(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
-    fmt.Printf("\n")
-    fmt.Printf("\033[31m[INTO] func resolveObjectData  \033[0m\n")
-
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-
-    fmt.Printf("\033[33m    [DUMP] selectionSet:  \033[0m\n")
-    spewo.Dump(selectionSet)
-    fmt.Printf("\033[33m    [DUMP] objectField:  \033[0m\n")
-    spewo.Dump(objectField)
-    fmt.Printf("\033[33m    [DUMP] resolvedData:  \033[0m\n")
-    spewo.Dump(resolvedData)
-
     // check if object type schema need default resolve function to get data
     // @todo: add a check method for situations that can be ignored
     r0 := getResolvedDataByFieldName(objectField.Name, resolvedData)
-    fmt.Printf("\033[33m    [DUMP] r0:  \033[0m\n")
-    spewo.Dump(r0)
+
     if r0 != nil {
         resolvedData = r0
     }
-
 
     // go
     targetObjectFields := objectField.Type.(*Object).Fields
@@ -603,20 +485,7 @@ func resolveObjectData(g *GlobalVariables, request Request, selectionSet *fronte
 }
 
 func getResolvedDataByJsonTag(targetFieldName string, resolvedData interface{}) (interface{}) {
-    fmt.Printf("\033[31m[INTO] func getResolvedDataByJsonTag  \033[0m\n")
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-
-    fmt.Printf("\033[33m    [DUMP] targetFieldName:  \033[0m\n")
-    spewo.Dump(targetFieldName)
-
-    fmt.Printf("\033[33m    [DUMP] targetFieldName:  \033[0m\n")
-    spewo.Dump(resolvedData)
-
     val := reflect.ValueOf(resolvedData)
-
-    fmt.Printf("\033[33m    [DUMP] val:  \033[0m\n")
-    spewo.Dump(val)
-
     for i := 0; i < val.Type().NumField(); i++ {
         if val.Type().Field(i).Tag.Get("json") == targetFieldName {
             return reflect.Indirect(val).FieldByName(val.Type().Field(i).Name)
@@ -626,15 +495,6 @@ func getResolvedDataByJsonTag(targetFieldName string, resolvedData interface{}) 
 }
 
 func getResolvedDataByFieldName(targetFieldName string, resolvedData interface{}) (interface{}) {
-    fmt.Printf("\033[31m[INTO] func getResolvedDataByFieldName  \033[0m\n")
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-
-    fmt.Printf("\033[33m    [DUMP] targetFieldName:  \033[0m\n")
-    spewo.Dump(targetFieldName)
-
-    fmt.Printf("\033[33m    [DUMP] resolvedData:  \033[0m\n")
-    spewo.Dump(resolvedData)
-
     val := reflect.ValueOf(resolvedData)
 
     for i := 0; i < val.Type().NumField(); i++ {

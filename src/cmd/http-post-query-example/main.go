@@ -134,14 +134,12 @@ var queryObject, _ = backend.NewObject(
                 ResolveFunction: func(p backend.ResolveParams) (interface{}, error) {
                     spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
 
-                    fmt.Printf("\033[33m    [INTO] user defined ResolveFunction:  \033[0m\n")
 
                     id, ok := p.Arguments["id"].(int)
                     spewo.Dump(id)
 
                     if ok {
                         intId := int(id)
-                        fmt.Printf("\033[33m    [INTO] id:  \033[0m\n")
 
                         // Find user
                         for _, user := range users {
@@ -152,7 +150,6 @@ var queryObject, _ = backend.NewObject(
                     }
                     name, ok := p.Arguments["name"].(string)
                     if ok {
-                        fmt.Printf("\033[33m    [INTO] name:  \033[0m\n")
 
                         // Find user
                         for _, user := range users {
@@ -163,7 +160,6 @@ var queryObject, _ = backend.NewObject(
                     }
                     married, ok := p.Arguments["married"].(bool)
                     if ok {
-                        fmt.Printf("\033[33m    [INTO] married:  \033[0m\n")
                         // Find user
                         for _, user := range users {
                             if bool(user.Married) == married {
@@ -173,7 +169,6 @@ var queryObject, _ = backend.NewObject(
                     }
                     height, ok := p.Arguments["height"].(float64)
                     if ok {
-                        fmt.Printf("\033[33m    [INTO] height:  \033[0m\n")
 
                         // Find user
                         for _, user := range users {
@@ -184,7 +179,6 @@ var queryObject, _ = backend.NewObject(
                     }
                     gender, ok := p.Arguments["gender"].(string)
                     if ok {
-                        fmt.Printf("\033[33m    [INTO] gender:  \033[0m\n")
 
                         // Find gender
                         for _, user := range users {

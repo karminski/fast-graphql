@@ -1,17 +1,18 @@
-package main
+// base_behchmark_test.go
+package bechmark 
 
 import (
-    "encoding/json"
     "fmt"
-    "net/http"
-    "io/ioutil"
     "math/rand"
     "fast-graphql/src/backend"
     "fast-graphql/src/frontend"
     "errors"
     "strconv"
+    "testing"
     // "os"
 )
+
+
 
 const (
     Gender_Male   = "MALE"
@@ -538,8 +539,30 @@ var schema, _ = backend.NewSchema(
 )
 
 
-func executeQuery(query string, variables map[string]interface{}, schema backend.Schema) *backend.Result {
+func executeQuery() *backend.Result {
     var result *backend.Result 
+    query := `
+query UserInfo($Id: Int=2){
+  User(Id:$Id){
+    Id,
+    Name,
+    Friends{
+      Id,
+      Name,
+      Location{
+        City,
+        Country,
+      },
+    },
+    Location{
+      City,
+      Country,
+    },
+  },
+},
+    `
+variables := map[string]interface{}{"Id":2.0}
+
     // execute
     result = backend.Execute(backend.Request{
         Schema: schema,
@@ -553,32 +576,21 @@ func executeQuery(query string, variables map[string]interface{}, schema backend
     return result
 }
 
-func main() {
-    http.HandleFunc("/product", func(w http.ResponseWriter, r *http.Request) {
-        // HTTP Post method
-        var decodedVariables map[string]interface{}
-        body, _ := ioutil.ReadAll(r.Body)
-        json.Unmarshal([]byte(body), &decodedVariables)
 
-        var variables map[string]interface{}
-        query     := decodedVariables["query"].(string)
-        if decodedVariables["variables"] != nil {
-            variables = decodedVariables["variables"].(map[string]interface{})
-        }
-        
-        // execute
-        result    := executeQuery(query, variables, schema)
 
-        // return
-        w.Header().Set("content-type","text/json")
-        json.NewEncoder(w).Encode(result)
-    })
-    fmt.Printf("START.\n")
+func BenchmarkGraphQlExecute(b *testing.B) {
+    b.ResetTimer()
 
-    fmt.Println("Server is running on port 8081")
-    http.ListenAndServe("127.0.0.1:8081", nil)
-
-    fmt.Printf("EXIT. \n")
+    // go
+    for n := 0; n < b.N; n++ {
+        executeQuery()
+    }
 }
 
-
+func GetResultTest(b *testing.B) {
+    // go
+    for n := 0; n < b.N; n++ {
+        r := executeQuery()
+        fmt.Printf("%v", r)
+    }
+}
