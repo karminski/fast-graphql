@@ -217,13 +217,7 @@ func (lexer *Lexer) LookAhead() int {
 }
 
 func (lexer *Lexer) nextDocumentIs(s string) bool {
-    slen := len(s)
-    for i := 0; i < slen; i++ {
-        if lexer.document[i] != s[i] {
-            return false
-        } 
-    }
-    return true
+	return len(lexer.document) >= len(s) && lexer.document[0:len(s)] == s
 }
 
 func (lexer *Lexer) skipDocument(n int) {
