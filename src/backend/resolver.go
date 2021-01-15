@@ -3,9 +3,9 @@ package backend
 import (
 	"unsafe"
 
-
-	"fmt"
-    "github.com/davecgh/go-spew/spew"
+	// "reflect"
+	// "fmt"
+    // "github.com/davecgh/go-spew/spew"
 )
 
 
@@ -109,21 +109,26 @@ type structField struct {
     offsetEmbed uintptr // byte offset of field<<1 | isEmbedded
 }
 
+func (f *structField) offset() uintptr {
+	return f.offsetEmbed >> 1
+}
+
+
+// add returns p+x.
+//
+// The whySafe string is ignored, so that the function still inlines
+// as efficiently as p+x, but all call sites should use the string to
+// record why the addition is safe, which is to say why the addition
+// does not cause x to advance to the very end of p's allocation
+// and therefore point incorrectly at the next block in memory.
+func add(p unsafe.Pointer, x uintptr, whySafe string) unsafe.Pointer {
+	return unsafe.Pointer(uintptr(p) + x)
+}
 
 
 func ResolveByFieldName(structData interface{}, name string) interface{} {
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-
-    fmt.Printf("[INTO] ResolveByFieldName():\n")
-    spewo.Dump(structData)
-	spewo.Dump(name)
-
 	// unpack Struct
     e := (*emptyInterface)(unsafe.Pointer(&structData))
-    fmt.Printf("e:\n")
-    spewo.Dump(e)
-
-
     startPointer := e.word
 
     // check flag
@@ -147,22 +152,16 @@ func ResolveByFieldName(structData interface{}, name string) interface{} {
         tf := &tt.fields[i]
         if tf.name.name() == name {
             targetStructField = tf
-            break
         }
     }
     if targetStructField == nil {
     	return nil
     }
 
-    fmt.Printf("targetStructField:\n")
-    spewo.Dump(targetStructField)
-
     // repack target field
     var packed interface{}
     pe := (*emptyInterface)(unsafe.Pointer(&packed))
     pe.typ  = targetStructField.typ
-    pe.word = unsafe.Pointer(uintptr(startPointer) + targetStructField.typ.ptrdata)
-    fmt.Printf("pe.word:\n")
-    spewo.Dump(pe.word)
+    pe.word = add(startPointer, targetStructField.offset(), "same as non-reflect &v.field")
     return packed
 }

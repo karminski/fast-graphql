@@ -12,7 +12,7 @@ import (
     // "strconv"
     // "os"
     "os"
-    "github.com/davecgh/go-spew/spew"
+    // "github.com/davecgh/go-spew/spew"
 
 
 )
@@ -445,13 +445,13 @@ func resolveScalarData(g *GlobalVariables, request Request, selectionSet *fronte
     // call resolve function
     targetFieldName := objectField.Name
 
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+    // spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
 
 
     
 
     r0 := ResolveByFieldName(resolvedData, targetFieldName)
-    spewo.Dump(r0)
+    // spewo.Dump(r0)
 
     if false {
         os.Exit(1)
