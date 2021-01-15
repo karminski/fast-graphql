@@ -11,6 +11,8 @@ import (
 
     // "strconv"
     // "os"
+    "os"
+    "github.com/davecgh/go-spew/spew"
 
 
 )
@@ -437,10 +439,41 @@ func defaultResolveFunction(g *GlobalVariables, request Request, selectionSet *f
     
 }
 
+///////////////////////////////////////////////////////////////////////////////////////
+
 func resolveScalarData(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
     // call resolve function
     targetFieldName := objectField.Name
-    r0 := getResolvedDataByFieldName(targetFieldName, resolvedData)
+
+    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+
+
+    
+
+    r0 := ResolveByFieldName(resolvedData, targetFieldName)
+    spewo.Dump(r0)
+
+    if false {
+        os.Exit(1)
+    }
+
+    // for i := 0; i < resolvedData.Type().NumField(); i++ {
+    //     if val.Type().Field(i).Name == targetFieldName {
+    //         fmt.Printf("[hit] targetFieldName:\n")
+    //         spewo.Dump(val.Type().Field(i))
+    //     }
+    // }
+
+    // resolve 
+    // resolveFunction := objectField.Type.(*Scalar).ResolveFunction
+    // p := ResolveParams{}
+    // p.Context = r0
+    // r1, _ := resolveFunction(p)
+    // spewo.Dump(targetFieldName)
+
+    // os.Exit(1)
+
+    // r0 := getResolvedDataByFieldName(targetFieldName, resolvedData)
     return r0, nil
     // // convert 
     // resolveFunction := objectField.Type.(*Scalar).ResolveFunction
@@ -454,6 +487,15 @@ func resolveScalarData(g *GlobalVariables, request Request, selectionSet *fronte
 
 func resolveListData(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
     resolvedDataValue := reflect.ValueOf(resolvedData)
+
+    // spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+    // spewo.Dump(resolvedDataValue)
+    // fmt.Printf("-------------------\n")
+    // for i:=0; i<resolvedDataValue.Len(); i++ {
+    //     spewo.Dump(resolvedDataValue.Index(i).Interface())
+    // }
+    // os.Exit(1)
+
     targetObjectFields := objectField.Type.(*List).Payload.(*Object).Fields
 
     // allocate space for list data returns
@@ -494,6 +536,7 @@ func getResolvedDataByJsonTag(targetFieldName string, resolvedData interface{}) 
     return nil
 }
 
+
 func getResolvedDataByFieldName(targetFieldName string, resolvedData interface{}) (interface{}) {
     val := reflect.ValueOf(resolvedData)
 
@@ -504,6 +547,12 @@ func getResolvedDataByFieldName(targetFieldName string, resolvedData interface{}
     }
     return nil
 }
+
+
+// scalar resolver
+
+
+
 
 
 // types
@@ -585,6 +634,14 @@ func NewScalar(scalarTemplate ScalarTemplate) *Scalar {
     
     return scalar
 }
+
+// type Int struct {
+//     Name            string
+//     Description     string
+//     ResolveFunction ResolveFunction
+// }
+// 
+// func (int *Int) ResolveFunction(p ResolveFunction)
 
 
 // scalar types
