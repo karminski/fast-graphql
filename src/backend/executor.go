@@ -453,7 +453,7 @@ func resolveScalarData(g *GlobalVariables, request Request, selectionSet *fronte
 
 
 func resolveListData(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
-    allFields          := ResolveListAllElements(resolvedData)
+    allFields          := ResolveSliceAllElements(resolvedData)
     targetObjectFields := objectField.Type.(*List).Payload.(*Object).Fields
 
     // allocate space for list data returns
@@ -470,8 +470,8 @@ func resolveListData(g *GlobalVariables, request Request, selectionSet *frontend
 func resolveObjectData(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
     // check if object type schema need default resolve function to get data
     // @todo: add a check method for situations that can be ignored
-    r0 := getResolvedDataByFieldName(objectField.Name, resolvedData)
-
+    // r0 := getResolvedDataByFieldName(objectField.Name, resolvedData)
+    r0 := ResolveByFieldName(resolvedData, objectField.Name)
     if r0 != nil {
         resolvedData = r0
     }

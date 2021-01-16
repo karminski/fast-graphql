@@ -4,8 +4,8 @@ import (
 	"unsafe"
 
 	// "reflect"
-	"fmt"
-    "github.com/davecgh/go-spew/spew"
+	// "fmt"
+    // "github.com/davecgh/go-spew/spew"
 )
 
 
@@ -229,17 +229,9 @@ func ResolveByFieldName(structData interface{}, name string) interface{} {
 }
 
 
-func ResolveListAllElements(structData interface{}) []interface{} {
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-
-    spewo.Dump(structData)
-
+func ResolveSliceAllElements(sliceData interface{}) []interface{} {
 	// unpack Struct
-    e := (*emptyInterface)(unsafe.Pointer(&structData))
-    // startPointer := e.word
-
-    fmt.Printf("e:\n")
-    spewo.Dump(e)
+    e := (*emptyInterface)(unsafe.Pointer(&sliceData))
 
     // check flag
     valueMetadataFlag := e.typ.kind
@@ -249,9 +241,9 @@ func ResolveListAllElements(structData interface{}) []interface{} {
 
     // slice input please
     if valueMetadataFlag != sliceKind {
-        panic("reflect: Field of non-slice type ")
+        panic("resolver: non-slice type ")
     }
-
+    
     s := (*UnsafeSlice)(e.word)
 
     // check slice len and init a container for return 
@@ -263,20 +255,11 @@ func ResolveListAllElements(structData interface{}) []interface{} {
     typ := tt.elem
     for i := 0; i < s.Len; i++ {
         element := arrayAt(s.Data, i, typ.size, "i < s.Len")
-        fmt.Printf("element:\n")
-    	spewo.Dump(element)
         var packed interface{}
     	pe := (*emptyInterface)(unsafe.Pointer(&packed))
     	pe.typ  = typ
     	pe.word = element
     	allElements[i] = packed
     }
-
-
-    fmt.Printf("allElements:\n")
-    spewo.Dump(allElements)
-
-
-
     return allElements
 }
