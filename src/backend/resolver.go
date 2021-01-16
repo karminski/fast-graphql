@@ -4,8 +4,8 @@ import (
 	"unsafe"
 
 	// "reflect"
-	// "fmt"
-    // "github.com/davecgh/go-spew/spew"
+	"fmt"
+    "github.com/davecgh/go-spew/spew"
 )
 
 
@@ -48,14 +48,50 @@ type rtype struct {
 }
 
 type flag uintptr
+
 const flagMethod  flag = 1 << 9 // @ go/srcreflect/value.go
-const structKind = 25
+
+const (
+	invalidKind uint8 = iota
+	boolKind
+	intKind
+	int8Kind
+	int16Kind
+	int32Kind
+	int64Kind
+	uintKind
+	uint8Kind
+	uint16Kind
+	uint32Kind
+	uint64Kind
+	uintptrKind
+	float32Kind
+	float64Kind
+	complex64Kind
+	complex128Kind
+	arrayKind
+	chanKind
+	funcKind
+	interfaceKind
+	mapKind
+	ptrKind
+	sliceKind
+	stringKind
+	structKind
+	unsafePointerKind
+)
 
 // structType represents a struct type.
 type structType struct {
     rtype
     pkgPath name
     fields  []structField // sorted by offset
+}
+
+// sliceType represents a slice type.
+type sliceType struct {
+	rtype
+	elem *rtype // slice element type
 }
 
 // name is an encoded type name with optional extra data.
@@ -88,6 +124,18 @@ type name struct {
 type UnsafeString struct {
     Data unsafe.Pointer
     Len  int
+}
+
+// Slice is the runtime representation of a slice.
+// It cannot be used safely or portably and its representation may
+// change in a later release.
+//
+// Unlike reflect.SliceHeader, its Data field is sufficient to guarantee the
+// data it references will not be garbage collected.
+type UnsafeSlice struct {
+	Data unsafe.Pointer
+	Len  int
+	Cap  int
 }
 
 func (n name) name() (s string) {
@@ -125,6 +173,18 @@ func add(p unsafe.Pointer, x uintptr, whySafe string) unsafe.Pointer {
 	return unsafe.Pointer(uintptr(p) + x)
 }
 
+// arrayAt returns the i-th element of p,
+// an array whose elements are eltSize bytes wide.
+// The array pointed at by p must have at least i+1 elements:
+// it is invalid (but impossible to check here) to pass i >= len,
+// because then the result will point outside the array.
+// whySafe must explain why i < len. (Passing "i < len" is fine;
+// the benefit is to surface this assumption at the call site.)
+func arrayAt(p unsafe.Pointer, i int, eltSize uintptr, whySafe string) unsafe.Pointer {
+	return add(p, uintptr(i)*eltSize, "i < len")
+}
+
+
 
 func ResolveByFieldName(structData interface{}, name string) interface{} {
 	// unpack Struct
@@ -141,6 +201,8 @@ func ResolveByFieldName(structData interface{}, name string) interface{} {
     //     // Easy case
     //     fmt.Printf("[Easy case!]\n")
     // }
+    
+    // struct input please
     if valueMetadataFlag != structKind {
         panic("reflect: Field of non-struct type ")
     }
@@ -164,4 +226,57 @@ func ResolveByFieldName(structData interface{}, name string) interface{} {
     pe.typ  = targetStructField.typ
     pe.word = add(startPointer, targetStructField.offset(), "same as non-reflect &v.field")
     return packed
+}
+
+
+func ResolveListAllElements(structData interface{}) []interface{} {
+    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+
+    spewo.Dump(structData)
+
+	// unpack Struct
+    e := (*emptyInterface)(unsafe.Pointer(&structData))
+    // startPointer := e.word
+
+    fmt.Printf("e:\n")
+    spewo.Dump(e)
+
+    // check flag
+    valueMetadataFlag := e.typ.kind
+    if valueMetadataFlag == 0 {
+        panic("invalied reflect.Value.Type")
+    }
+
+    // slice input please
+    if valueMetadataFlag != sliceKind {
+        panic("reflect: Field of non-slice type ")
+    }
+
+    s := (*UnsafeSlice)(e.word)
+
+    // check slice len and init a container for return 
+    if s.Len < 1 { // an empty slice
+    	return nil
+    }
+    allElements := make([]interface{}, s.Len)
+    tt := (*sliceType)(unsafe.Pointer(e.typ))
+    typ := tt.elem
+    for i := 0; i < s.Len; i++ {
+        element := arrayAt(s.Data, i, typ.size, "i < s.Len")
+        fmt.Printf("element:\n")
+    	spewo.Dump(element)
+        var packed interface{}
+    	pe := (*emptyInterface)(unsafe.Pointer(&packed))
+    	pe.typ  = typ
+    	pe.word = element
+    	allElements[i] = packed
+    }
+
+
+    fmt.Printf("allElements:\n")
+    spewo.Dump(allElements)
+
+
+
+    return allElements
 }

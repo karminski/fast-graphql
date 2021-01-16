@@ -439,73 +439,29 @@ func defaultResolveFunction(g *GlobalVariables, request Request, selectionSet *f
     
 }
 
-///////////////////////////////////////////////////////////////////////////////////////
 
 func resolveScalarData(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
     // call resolve function
     targetFieldName := objectField.Name
-
-    // spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-
-
-    
-
     r0 := ResolveByFieldName(resolvedData, targetFieldName)
-    // spewo.Dump(r0)
 
     if false {
         os.Exit(1)
     }
-
-    // for i := 0; i < resolvedData.Type().NumField(); i++ {
-    //     if val.Type().Field(i).Name == targetFieldName {
-    //         fmt.Printf("[hit] targetFieldName:\n")
-    //         spewo.Dump(val.Type().Field(i))
-    //     }
-    // }
-
-    // resolve 
-    // resolveFunction := objectField.Type.(*Scalar).ResolveFunction
-    // p := ResolveParams{}
-    // p.Context = r0
-    // r1, _ := resolveFunction(p)
-    // spewo.Dump(targetFieldName)
-
-    // os.Exit(1)
-
-    // r0 := getResolvedDataByFieldName(targetFieldName, resolvedData)
     return r0, nil
-    // // convert 
-    // resolveFunction := objectField.Type.(*Scalar).ResolveFunction
-    // p := ResolveParams{}
-    // p.Context = r0
-    // r1, _ := resolveFunction(p)
-    // 
-    // 
-    // return r1, nil
 }
 
+
 func resolveListData(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
-    resolvedDataValue := reflect.ValueOf(resolvedData)
-
-    // spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-    // spewo.Dump(resolvedDataValue)
-    // fmt.Printf("-------------------\n")
-    // for i:=0; i<resolvedDataValue.Len(); i++ {
-    //     spewo.Dump(resolvedDataValue.Index(i).Interface())
-    // }
-    // os.Exit(1)
-
+    allFields          := ResolveListAllElements(resolvedData)
     targetObjectFields := objectField.Type.(*List).Payload.(*Object).Fields
 
     // allocate space for list data returns
-    finalResult := make([]interface{}, 0, resolvedDataValue.Len())
+    finalResult := make([]interface{}, 0, len(allFields))
 
     // traverse list
-    for i:=0; i<resolvedDataValue.Len(); i++ {
-        resolvedDataElement := resolvedDataValue.Index(i).Interface()
-        // execute
-        selectionSetResult, _ := resolveSelectionSet(g, request, selectionSet, targetObjectFields, resolvedDataElement)
+    for _, field := range allFields {
+        selectionSetResult, _ := resolveSelectionSet(g, request, selectionSet, targetObjectFields, field)
         finalResult = append(finalResult, selectionSetResult)
     }
     return finalResult, nil
