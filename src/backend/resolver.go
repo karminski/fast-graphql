@@ -196,11 +196,6 @@ func ResolveByFieldName(structData interface{}, name string) interface{} {
     if valueMetadataFlag == 0 {
         panic("invalied reflect.Value.Type")
     }
-
-    // if valueMetadataFlag&flagMethod == 0 {
-    //     // Easy case
-    //     fmt.Printf("[Easy case!]\n")
-    // }
     
     // struct input please
     if valueMetadataFlag != structKind {
@@ -250,6 +245,8 @@ func ResolveSliceAllElements(sliceData interface{}) []interface{} {
     if s.Len < 1 { // an empty slice
     	return nil
     }
+
+    // pickup and return
     allElements := make([]interface{}, s.Len)
     tt := (*sliceType)(unsafe.Pointer(e.typ))
     typ := tt.elem
