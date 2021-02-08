@@ -10,6 +10,7 @@ import (
     "fast-graphql/src/frontend"
     "errors"
     "strconv"
+    "io"
     _ "net/http/pprof"
     // "os"
 )
@@ -539,10 +540,11 @@ var schema, _ = backend.NewSchema(
 )
 
 
-func executeQuery(query string, variables map[string]interface{}, schema backend.Schema) *backend.Result {
+func executeQuery(query string, variables map[string]interface{}, schema backend.Schema) (*backend.Result, string) {
     var result *backend.Result 
+    var stringifiedResult string
     // execute
-    result = backend.Execute(backend.Request{
+    result, stringifiedResult = backend.Execute(backend.Request{
         Schema: schema,
         Query:  query,
         Variables: variables,
@@ -551,7 +553,7 @@ func executeQuery(query string, variables map[string]interface{}, schema backend
         fmt.Printf("\n\n\n")
         fmt.Printf("errors: %v", result.Errors)
     }
-    return result
+    return result, stringifiedResult
 }
 
 func main() {
@@ -572,11 +574,14 @@ func main() {
         }
         
         // execute
-        result    := executeQuery(query, variables, schema)
+        result, stringifiedResult := executeQuery(query, variables, schema)
 
         // return
         w.Header().Set("content-type","text/json")
-        json.NewEncoder(w).Encode(result)
+        io.WriteString(w, stringifiedResult)
+        if false {
+            json.NewEncoder(w).Encode(result)
+        }
     })
 
     // run     

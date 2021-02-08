@@ -24,9 +24,11 @@ Here is what you need:
 - [clang - 3.9.1 are tested]()
 - [yasm - A Modular Assembler like NASM](https://github.com/yasm/yasm) or [gas - GNU Assembler]()
 
+注意, yasm 貌似比默认的as要不容易出问题. gas还没测试.
+
 And Develop Environment:
 
-- ```docker pull karminski/c2goasm-dev-kit```
+- ```docker pull karminski/c2goasm-dev-kit:0.1```
 
 # Step 1, Prepare The C Code
 
@@ -202,6 +204,12 @@ var d1  uint64 = 0
 a := []unsafe.Pointer{unsafe.Pointer(&d0),unsafe.Pointer(&d1)}
 p1 := unsafe.Pointer(&a[0])
 ```
+
+## 只要是数组就只能传递指针数组吗?
+
+
+## 字符串数据传递
+
 
 
 

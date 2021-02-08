@@ -17,6 +17,8 @@ fast-graphql
 - 完成 ASM 优化 Parser 的 Demo. (✔️)
 - 完成 GraphQL 的 EBNF 定义, 方便构建编译器前端. (✔️)
 - 完成 GraphQL Lexer & Parser. (✔️)
+- 取消反射. (✔️)
+- 取消JSON生成器, 采用后端解析过程实时生成结果. (✔️)
 - 完成 OperationDefinition 的相关功能. ()
 - 完成 JIT 前端原型. ()
 - 完成字符串序列化优化. ()
@@ -25,6 +27,7 @@ fast-graphql
 - 完成测试. ()
 - 完成 GC & memory 优化. ()
 - 完成 ASM & SIMD 优化. ()
+- AST缓存?
 
 # Examples
 

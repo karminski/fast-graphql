@@ -11,7 +11,6 @@ import (
 
     // "strconv"
     // "os"
-    "os"
     // "github.com/davecgh/go-spew/spew"
 
 
@@ -52,6 +51,9 @@ type GlobalVariables struct {
 
     // executor for operation subscription
     SubscriptionExecutor *SubscriptionExecutor
+
+    // Stringifier
+    Stringifier *Stringifier
 }
 
 func (result *Result) SetErrorInfo(err error, errorLocation *ErrorLocation) {
@@ -81,21 +83,22 @@ func NewGlobalVariables() *GlobalVariables {
     if ENABLE_SUBSCRIPTION_EXECUTOR {
         g.SubscriptionExecutor = NewSubscriptionExecutor()
     }
+    g.Stringifier = NewStringifier()
     return g
 }
 
-func Execute(request Request) (*Result) {
+func Execute(request Request) (*Result, string) {
 
     var document *frontend.Document
     var err       error
 
-    result := Result{} 
-    g      := NewGlobalVariables()
+    result      := Result{} 
+    g           := NewGlobalVariables()
 
     // process input
     if document, err = frontend.Compile(request.Query); err != nil {
         result.SetErrorInfo(err, nil)
-        return &result
+        return &result, ""
     }
 
     // if DUMP_FRONTEND {
@@ -110,13 +113,13 @@ func Execute(request Request) (*Result) {
     var operationDefinition *frontend.OperationDefinition
     if operationDefinition, err = document.GetOperationDefinition(); err != nil {
         result.SetErrorInfo(err, nil)
-        return &result
+        return &result, ""
     }
 
     // fill Query Variables Map
     if g.QueryVariablesMap, err = getQueryVariablesMap(request, operationDefinition.VariableDefinitions); err != nil {
         result.SetErrorInfo(err, nil)
-        return &result
+        return &result, ""
     }    
     selectionSet := operationDefinition.SelectionSet
 
@@ -132,18 +135,23 @@ func Execute(request Request) (*Result) {
     } else {
         err = errors.New("Execute(): request.Schema should have Query or Mutation or Subscription field, please check server side Schema definition.")
         result.SetErrorInfo(err, nil)
-        return &result
+        return &result, ""
     }
     
     // execute
     var resolvedResult interface{}
     if resolvedResult, err = resolveSelectionSet(g, request, selectionSet, objectFields, nil); err != nil {
         result.SetErrorInfo(err, nil)
-        return &result
+        return &result, ""
     }
     
     result.Data = resolvedResult
-    return &result
+
+    // stringify
+    g.Stringifier.buildNoError()
+    stringifiedData := g.Stringifier.Stringify()
+
+    return &result, stringifiedData
 }
 
 
@@ -184,18 +192,35 @@ func resolveSelectionSet(g *GlobalVariables, request Request, selectionSet *fron
     selections  := selectionSet.GetSelections()
     finalResult := make(map[string]interface{}, len(selections))
 
+    // stringify
+    g.Stringifier.buildObjectStart()
+
     // resolve SelectionSet.Selections
     var resolvedResult interface{}
     var err            error
-    for _, selection := range selections {
+    stopPos := len(selections) - 1
+    for i, selection := range selections {
         field     := selection.(*frontend.Field)
         fieldName := field.GetFieldNameString()
+
+        // stringify
+        g.Stringifier.buildFieldPrefix(fieldName)
+
         // resolve
         if resolvedResult, err = resolveField(g, request, fieldName, field, objectFields, resolvedData); err != nil {
             return nil, err
         }
-        finalResult[fieldName] = resolvedResult   
+        finalResult[fieldName] = resolvedResult  
+
+        // stringify
+        if i < stopPos {
+            g.Stringifier.buildComma() 
+        }
     }
+
+    // stringify
+    g.Stringifier.buildObjectEnd()
+
     return finalResult, nil
 }
 
@@ -445,9 +470,9 @@ func resolveScalarData(g *GlobalVariables, request Request, selectionSet *fronte
     targetFieldName := objectField.Name
     r0 := ResolveByFieldName(resolvedData, targetFieldName)
 
-    if false {
-        os.Exit(1)
-    }
+    // stringify
+    g.Stringifier.buildScalar(r0)
+
     return r0, nil
 }
 
@@ -459,11 +484,24 @@ func resolveListData(g *GlobalVariables, request Request, selectionSet *frontend
     // allocate space for list data returns
     finalResult := make([]interface{}, 0, len(allFields))
 
+    // stringify
+    g.Stringifier.buildArrayStart()
+
     // traverse list
-    for _, field := range allFields {
+    stopPos := len(allFields) - 1
+    for i, field := range allFields {
         selectionSetResult, _ := resolveSelectionSet(g, request, selectionSet, targetObjectFields, field)
         finalResult = append(finalResult, selectionSetResult)
+
+        // stringify
+        if i < stopPos {
+            g.Stringifier.buildComma() 
+        }
     }
+
+    // stringify
+    g.Stringifier.buildArrayEnd()
+
     return finalResult, nil
 }
 
@@ -476,9 +514,12 @@ func resolveObjectData(g *GlobalVariables, request Request, selectionSet *fronte
         resolvedData = r0
     }
 
+
     // go
     targetObjectFields := objectField.Type.(*Object).Fields
     selectionSetResult, _ := resolveSelectionSet(g, request, selectionSet, targetObjectFields, resolvedData)
+
+
     return selectionSetResult, nil
 }
 
