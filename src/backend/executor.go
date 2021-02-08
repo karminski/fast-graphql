@@ -9,6 +9,8 @@ import (
     "reflect"
     "encoding/json"
 
+    "github.com/karminski/fastreflect"
+
     // "strconv"
     // "os"
     // "github.com/davecgh/go-spew/spew"
@@ -468,7 +470,7 @@ func defaultResolveFunction(g *GlobalVariables, request Request, selectionSet *f
 func resolveScalarData(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
     // call resolve function
     targetFieldName := objectField.Name
-    r0 := ResolveByFieldName(resolvedData, targetFieldName)
+    r0 := fastreflect.StructFieldByName(resolvedData, targetFieldName)
 
     // stringify
     g.Stringifier.buildScalar(r0)
@@ -478,7 +480,7 @@ func resolveScalarData(g *GlobalVariables, request Request, selectionSet *fronte
 
 
 func resolveListData(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
-    allFields          := ResolveSliceAllElements(resolvedData)
+    allFields          := fastreflect.SliceAllElements(resolvedData)
     targetObjectFields := objectField.Type.(*List).Payload.(*Object).Fields
 
     // allocate space for list data returns
@@ -509,7 +511,7 @@ func resolveObjectData(g *GlobalVariables, request Request, selectionSet *fronte
     // check if object type schema need default resolve function to get data
     // @todo: add a check method for situations that can be ignored
     // r0 := getResolvedDataByFieldName(objectField.Name, resolvedData)
-    r0 := ResolveByFieldName(resolvedData, objectField.Name)
+    r0 := fastreflect.StructFieldByName(resolvedData, objectField.Name)
     if r0 != nil {
         resolvedData = r0
     }

@@ -1,2 +1,4 @@
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/karminski/fastreflect v0.0.1 h1:v+OK8OmyQovOvB4UKILQ5tnIbm6xLqlYfVs0DWeFLbk=
+github.com/karminski/fastreflect v0.0.1/go.mod h1:+leSpWuBSb2ZNnKJmhixN3lUFPK/EPBVjEUei4IZB8A=

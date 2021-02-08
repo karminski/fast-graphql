@@ -1,7 +1,7 @@
-package main
+package jit
 
 import (
-    "fmt"
+    // "fmt"
     "syscall"
     "unsafe"
 )
