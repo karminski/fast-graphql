@@ -70,7 +70,11 @@ func (s *Stringifier)buildInt(i int) {
 }
 
 func (s *Stringifier)buildFloat64(f float64) {
-    s.Builder.WriteString(fmt.Sprintf("%f", f))
+    s.Builder.WriteString(strconv.FormatFloat(f, 'E', -1 ,64))
+}
+
+func (s *Stringifier)buildFloat32(f float64) {
+    s.Builder.WriteString(strconv.FormatFloat(f, 'E', -1 ,32))
 }
 
 // boolean
@@ -137,6 +141,8 @@ func (s *Stringifier)buildScalar(scalar interface{}) {
         s.buildInt(scalar.(int))
     case float64:
         s.buildFloat64(scalar.(float64))
+    case float32:
+        s.buildFloat32(scalar.(float64))
     case bool:
         s.buildBool(scalar.(bool))
     case nil:
