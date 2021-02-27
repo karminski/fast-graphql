@@ -1,4 +1,4 @@
-package backend
+package jit
 
 import (
     "strings"
@@ -90,8 +90,9 @@ func (s *Stringifier)buildInt64(i int64) {
     s.Builder.WriteString(strconv.FormatInt(i, 10))
 }
 
-func (s *Stringifier)buildFloat32(f float64) {
-    s.Builder.WriteString(strconv.FormatFloat(f, 'E', -1 ,32))
+func (s *Stringifier)buildFloat32(f float32) {
+    // @todo: is this method needed?
+    return
 }
 
 func (s *Stringifier)buildFloat64(f float64) {
@@ -158,7 +159,7 @@ func (s *Stringifier)buildScalar(scalar interface{}) {
     case float64:
         s.buildFloat64(scalar.(float64))
     case float32:
-        s.buildFloat32(scalar.(float64))
+        s.buildFloat32(scalar.(float32))
     case bool:
         s.buildBool(scalar.(bool))
     case nil:

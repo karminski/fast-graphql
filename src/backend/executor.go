@@ -3,6 +3,7 @@ package backend
 
 import (
     "fast-graphql/src/frontend"
+    "fast-graphql/src/jit"
     "fmt"
     "errors"
     "log"
@@ -56,6 +57,9 @@ type GlobalVariables struct {
 
     // Stringifier
     Stringifier *Stringifier
+
+    // Tape
+    Tape *jit.Tape
 }
 
 func (result *Result) SetErrorInfo(err error, errorLocation *ErrorLocation) {
@@ -85,6 +89,9 @@ func NewGlobalVariables() *GlobalVariables {
     if ENABLE_SUBSCRIPTION_EXECUTOR {
         g.SubscriptionExecutor = NewSubscriptionExecutor()
     }
+    if ENABLE_JIT {
+        g.Tape = jit.NewTape()
+    }
     g.Stringifier = NewStringifier()
     return g
 }
@@ -110,7 +117,7 @@ func Execute(request Request) (*Result, string) {
     // }
 
     // @todo: THE DOCUMENT NEED VALIDATE!
-    
+        
     // get top layer SelectionSet.Fields and request.Schema.ObjectFields
     var operationDefinition *frontend.OperationDefinition
     if operationDefinition, err = document.GetOperationDefinition(); err != nil {
@@ -152,6 +159,11 @@ func Execute(request Request) (*Result, string) {
     // stringify
     g.Stringifier.buildNoError()
     stringifiedData := g.Stringifier.Stringify()
+
+    // jit
+    jitr := jit.Execute(g.Tape)
+    fmt.Printf("jitr:\n")
+    fmt.Printf("%s\n", jitr)
 
     return &result, stringifiedData
 }
@@ -206,7 +218,8 @@ func resolveSelectionSet(g *GlobalVariables, request Request, selectionSet *fron
         fieldName := field.GetFieldNameString()
 
         // stringify
-        g.Stringifier.buildFieldPrefix(fieldName)
+        g.Stringifier.buildFieldName(fieldName)
+        g.Tape.Record(jit.OP_BUILD_FIELD_NAME, fieldName)
 
         // resolve
         if resolvedResult, err = resolveField(g, request, fieldName, field, objectFields, resolvedData); err != nil {
@@ -216,7 +229,9 @@ func resolveSelectionSet(g *GlobalVariables, request Request, selectionSet *fron
 
         // stringify
         if i < stopPos {
-            g.Stringifier.buildComma() 
+            g.Stringifier.buildComma()
+            g.Tape.Record(jit.OP_BUILD_COMMA, nil)
+
         }
     }
 
@@ -546,12 +561,6 @@ func getResolvedDataByFieldName(targetFieldName string, resolvedData interface{}
     }
     return nil
 }
-
-
-// scalar resolver
-
-
-
 
 
 // types

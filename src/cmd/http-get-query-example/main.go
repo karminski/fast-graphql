@@ -4,7 +4,7 @@ import (
     "encoding/json"
     "fmt"
     "net/http"
-    "io/ioutil"
+    // "io/ioutil"
 
     "fast-graphql/src/backend"
     "github.com/davecgh/go-spew/spew"
@@ -189,12 +189,15 @@ func executeQuery(query string, variables string, schema backend.Schema) *backen
     // unmarshal variables
     decodedVariables, err := backend.DecodeVariables(variables)
     if err != nil {
-        result.Error = err
-        return result
+        fmt.Println(err)
     }
+    //if err != nil {
+    //    result.Error = err
+    //    return result
+    //}
 
     // execute
-    result = backend.Execute(backend.Request{
+    result, _ = backend.Execute(backend.Request{
         Schema: schema,
         Query:  query,
         Variables: decodedVariables,
@@ -207,7 +210,7 @@ func executeQuery(query string, variables string, schema backend.Schema) *backen
 
 func main() {
     http.HandleFunc("/product", func(w http.ResponseWriter, r *http.Request) {
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+    // spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
 
         // HTTP Get method 
         query     := r.URL.Query().Get("query")
