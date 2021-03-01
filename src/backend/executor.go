@@ -208,6 +208,8 @@ func resolveSelectionSet(g *GlobalVariables, request Request, selectionSet *fron
 
     // stringify
     g.Stringifier.buildObjectStart()
+    g.Tape.Record(jit.OP_BUILD_OBJECT_START, nil)
+
 
     // resolve SelectionSet.Selections
     var resolvedResult interface{}
@@ -237,6 +239,8 @@ func resolveSelectionSet(g *GlobalVariables, request Request, selectionSet *fron
 
     // stringify
     g.Stringifier.buildObjectEnd()
+    g.Tape.Record(jit.OP_BUILD_OBJECT_END, nil)
+
 
     return finalResult, nil
 }
@@ -490,6 +494,22 @@ func resolveScalarData(g *GlobalVariables, request Request, selectionSet *fronte
     // stringify
     g.Stringifier.buildScalar(r0)
 
+    // jit
+    switch r0.(type){
+    case string:
+        g.Tape.Record(jit.OP_BUILD_STRING, r0)
+    case int:
+        g.Tape.Record(jit.OP_BUILD_INT, r0)
+    case float64:
+        g.Tape.Record(jit.OP_BUILD_FLOAT64, r0)
+    case bool:
+        g.Tape.Record(jit.OP_BUILD_BOOL, r0)
+    case nil:
+        g.Tape.Record(jit.OP_BUILD_NULL, nil)
+    }
+    
+
+
     return r0, nil
 }
 
@@ -503,6 +523,8 @@ func resolveListData(g *GlobalVariables, request Request, selectionSet *frontend
 
     // stringify
     g.Stringifier.buildArrayStart()
+    g.Tape.Record(jit.OP_BUILD_ARRAY_START, nil)
+
 
     // traverse list
     stopPos := len(allFields) - 1
@@ -513,11 +535,13 @@ func resolveListData(g *GlobalVariables, request Request, selectionSet *frontend
         // stringify
         if i < stopPos {
             g.Stringifier.buildComma() 
+            g.Tape.Record(jit.OP_BUILD_COMMA, nil)
         }
     }
 
     // stringify
     g.Stringifier.buildArrayEnd()
+    g.Tape.Record(jit.OP_BUILD_ARRAY_END, nil)
 
     return finalResult, nil
 }
