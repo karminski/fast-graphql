@@ -159,6 +159,8 @@ func Execute(request Request) (*Result, string) {
     // stringify
     g.Stringifier.buildNoError()
     stringifiedData := g.Stringifier.Stringify()
+    g.Tape.Record(jit.OP_BUILD_ERROR_INFO, nil)
+    
 
     // jit
     jitr := jit.Execute(g.Tape)

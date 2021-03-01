@@ -34,6 +34,7 @@ const (
 	
 	// combined
 	OP_BUILD_FIELD_NAME 
+	OP_BUILD_ERROR_INFO
 )
 
 type Opcode     int

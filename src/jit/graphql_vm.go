@@ -121,6 +121,11 @@ CallBuildFieldName := func() {
 	pc ++
 }
 
+CallBuildErrorInfo := func() {
+	stringifier.buildNoError()
+	pc ++
+}
+
 	// run tape
 		
 	for _, inst := range *tape {
@@ -161,6 +166,8 @@ CallBuildFieldName := func() {
 			assembler.CallFunc(CallBuildEmptyString)
 		case OP_BUILD_FIELD_NAME: 
 			assembler.CallFunc(CallBuildFieldName)
+		case OP_BUILD_ERROR_INFO:
+			assembler.CallFunc(CallBuildErrorInfo)
 		}
 	}
 
