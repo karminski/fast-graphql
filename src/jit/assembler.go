@@ -6,6 +6,7 @@ package jit
 
 import (
 	"fmt"
+	"unsafe"
 )
 
 type ABI int
@@ -55,6 +56,7 @@ const (
  *
  */
 
+
 /**
  * Assembler implements a simple amd64 assembler. All methods on
  * Assembler will emit code to Buf[Off:] and advances Off. Buf will
@@ -62,9 +64,36 @@ const (
  * will panic.
  */
 type Assembler struct {
+	addr *Assembler
 	Buf []byte
 	Off int
 	ABI ABI
+}
+
+// noescape hides a pointer from escape analysis.  noescape is
+// the identity function but escape analysis doesn't think the
+// output depends on the input. noescape is inlined and currently
+// compiles down to zero instructions.
+// USE CAREFULLY!
+// This was copied from the runtime; see issues 23382 and 7921.
+//go:nosplit
+//go:nocheckptr
+func noescape(p unsafe.Pointer) unsafe.Pointer {
+	x := uintptr(p)
+	return unsafe.Pointer(x ^ 0)
+}
+
+func (a *Assembler) copyCheck() {
+	if a.addr == nil {
+		// This hack works around a failing of Go's escape analysis
+		// that was causing b to escape and be heap allocated.
+		// See issue 23382.
+		// TODO: once issue 7921 is fixed, this should be reverted to
+		// just "b.addr = b".
+		a.addr = (*Assembler)(noescape(unsafe.Pointer(a)))
+	} else if a.addr != a {
+		panic("strings: illegal use of non-zero Builder copied by value")
+	}
 }
 
 func New(size int) (*Assembler, error) {
@@ -96,6 +125,7 @@ func (a *Assembler) Dump() {
 
 func (a *Assembler) Release() {
 	Release(a.Buf)
+	a.addr = nil
 }
 
 func (a *Assembler) BuildTo(out interface{}) {
@@ -110,17 +140,20 @@ func (a *Assembler) BuildTo(out interface{}) {
 }
 
 func (a *Assembler) byte(b byte) {
+	a.copyCheck()
 	a.Buf[a.Off] = b
 	a.Off++
 }
 
 func (a *Assembler) int16(i uint16) {
+	a.copyCheck()
 	a.Buf[a.Off] = byte(i & 0xFF)
 	a.Buf[a.Off+1] = byte(i >> 8)
 	a.Off += 2
 }
 
 func (a *Assembler) int32(i uint32) {
+	a.copyCheck()
 	a.Buf[a.Off] = byte(i & 0xFF)
 	a.Buf[a.Off+1] = byte(i >> 8)
 	a.Buf[a.Off+2] = byte(i >> 16)
@@ -129,6 +162,7 @@ func (a *Assembler) int32(i uint32) {
 }
 
 func (a *Assembler) int64(i uint64) {
+	a.copyCheck()
 	a.Buf[a.Off] = byte(i & 0xFF)
 	a.Buf[a.Off+1] = byte(i >> 8)
 	a.Buf[a.Off+2] = byte(i >> 16)
@@ -141,6 +175,7 @@ func (a *Assembler) int64(i uint64) {
 }
 
 func (a *Assembler) rel32(addr uintptr) {
+	a.copyCheck()
 	off := uintptr(addr) - Addr(a.Buf[a.Off:]) - 4
 	if uintptr(int32(off)) != off {
 		panic("call rel: target out of range")
@@ -166,6 +201,7 @@ func (a *Assembler) rel32(addr uintptr) {
  */
 
 func (a *Assembler) rex(w, r, x, b bool) {
+	a.copyCheck()
 	var bits byte
 	if w {
 		bits |= REXW
@@ -185,6 +221,7 @@ func (a *Assembler) rex(w, r, x, b bool) {
 }
 
 func (a *Assembler) rexBits(lsize, rsize byte, r, x, b bool) {
+	a.copyCheck()
 	if lsize != 0 && rsize != 0 && lsize != rsize {
 		panic("mismatched instruction sizes")
 	}
@@ -226,10 +263,12 @@ func (a *Assembler) rexBits(lsize, rsize byte, r, x, b bool) {
 
 // ModR/M bytes 
 func (a *Assembler) modrm(mod, reg, rm byte) {
+	a.copyCheck()
 	a.byte((mod << 6) | (reg << 3) | rm)
 }
 
 // SIB, Scale-Index-Base byte
 func (a *Assembler) sib(s, i, b byte) {
+	a.copyCheck()
 	a.byte((s << 6) | (i << 3) | b)
 }

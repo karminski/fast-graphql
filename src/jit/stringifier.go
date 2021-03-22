@@ -183,5 +183,5 @@ func (s *Stringifier)buildErrorInfo(err error) {
 }
 
 func (s *Stringifier)buildNoError() {
-    s.join(",\"errors\":null}")
+    s.join(",\"errors\":null,\"jit-result\":true}")
 }

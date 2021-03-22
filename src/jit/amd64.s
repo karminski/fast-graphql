@@ -16,6 +16,6 @@
 
 
 TEXT ·get_runtime_cgocallback_gofunc(SB),0,$0-8
-        LEAQ runtime·cgocallback_gofunc(SB), AX
+        LEAQ runtime·cgocallback(SB), AX
         MOVQ AX, rv+0(FP)
         RET

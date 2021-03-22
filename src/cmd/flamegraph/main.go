@@ -13,6 +13,9 @@ import (
     "io"
     _ "net/http/pprof"
     // "os"
+    
+    "github.com/cornelk/hashmap"
+
 )
 
 const (
@@ -540,7 +543,7 @@ var schema, _ = backend.NewSchema(
 )
 
 
-func executeQuery(query string, variables map[string]interface{}, schema backend.Schema) (*backend.Result, string) {
+func executeQuery(query string, variables map[string]interface{}, schema backend.Schema, hmap *hashmap.HashMap) (*backend.Result, string) {
     var result *backend.Result 
     var stringifiedResult string
     // execute
@@ -548,7 +551,7 @@ func executeQuery(query string, variables map[string]interface{}, schema backend
         Schema: schema,
         Query:  query,
         Variables: variables,
-    })
+    }, hmap)
     if len(result.Errors) > 0 {
         fmt.Printf("\n\n\n")
         fmt.Printf("errors: %v", result.Errors)
@@ -557,6 +560,7 @@ func executeQuery(query string, variables map[string]interface{}, schema backend
 }
 
 func main() {
+    hmap := &hashmap.HashMap{}
     http.HandleFunc("/product", func(w http.ResponseWriter, r *http.Request) {
         // HTTP Post method
         var decodedVariables map[string]interface{}
@@ -574,7 +578,7 @@ func main() {
         }
         
         // execute
-        result, stringifiedResult := executeQuery(query, variables, schema)
+        result, stringifiedResult := executeQuery(query, variables, schema, hmap)
 
         // return
         w.Header().Set("content-type","text/json")

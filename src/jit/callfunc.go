@@ -77,4 +77,5 @@ func calculateFramesize(f interface{}) uintptr {
 	return s
 }
 
+//go:noescape
 func get_runtime_cgocallback_gofunc() uintptr

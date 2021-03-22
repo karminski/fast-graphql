@@ -2,21 +2,11 @@ package jit
 
 import (
 	// "fmt"
-	"log"
+	// "log"
 
 	
 )
 
-
-
-func newAssembler() *Assembler {
-	// @todo: auto generate page size
-	buf, e := Alloc(PageSize)
-	if e != nil {
-		log.Fatalf("alloc: %v", e.Error())
-	}
-	return &Assembler{buf, 0, GoABI}
-}
 
 
 
@@ -25,7 +15,7 @@ func Execute(tape *Tape) string {
 
 	// init
 	stringifier := NewStringifier()
-	assembler := newAssembler()
+	assembler, _ := NewGoABI(PageSize)
 	defer Release(assembler.Buf)
 	var pc int 
 	pc = 0
@@ -176,7 +166,7 @@ CallBuildErrorInfo := func() {
 
 	// debug
 	tape.Dump()
-	assembler.Dump()
+	// assembler.Dump()
 
 	// emit
 	var f func()

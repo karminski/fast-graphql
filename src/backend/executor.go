@@ -9,9 +9,12 @@ import (
     "log"
     "reflect"
     "encoding/json"
+    "crypto/md5"
+    "encoding/hex"
 
     "github.com/karminski/fastreflect"
-
+    "github.com/cornelk/hashmap"
+    
     // "strconv"
     // "os"
     // "github.com/davecgh/go-spew/spew"
@@ -60,7 +63,9 @@ type GlobalVariables struct {
 
     // Tape
     Tape *jit.Tape
+
 }
+
 
 func (result *Result) SetErrorInfo(err error, errorLocation *ErrorLocation) {
     errStr := fmt.Sprintf("%v", err)
@@ -96,7 +101,7 @@ func NewGlobalVariables() *GlobalVariables {
     return g
 }
 
-func Execute(request Request) (*Result, string) {
+func Execute(request Request, hmap *hashmap.HashMap) (*Result, string) {
 
     var document *frontend.Document
     var err       error
@@ -109,6 +114,15 @@ func Execute(request Request) (*Result, string) {
         result.SetErrorInfo(err, nil)
         return &result, ""
     }
+
+    // check jit code
+    queryMd5 := md5.Sum([]byte(request.Query))
+    queryKey := hex.EncodeToString(queryMd5[:])
+    jitcode, jitcodeCached := hmap.Get(queryKey)
+    if jitcodeCached {
+        cachedjitr := jit.Execute(jitcode.(*jit.Tape))
+        return &result, cachedjitr
+    } 
 
     // if DUMP_FRONTEND {
     //     spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
@@ -160,12 +174,17 @@ func Execute(request Request) (*Result, string) {
     g.Stringifier.buildNoError()
     stringifiedData := g.Stringifier.Stringify()
     g.Tape.Record(jit.OP_BUILD_ERROR_INFO, nil)
-    
+
 
     // jit
-    jitr := jit.Execute(g.Tape)
-    fmt.Printf("jitr:\n")
-    fmt.Printf("%s\n", jitr)
+    jit.Execute(g.Tape)
+    // fmt.Printf("jitr:\n")
+    // fmt.Printf("%s\n", jitr)
+
+    // cache jit code
+    if !jitcodeCached {
+       hmap.Set(queryKey, g.Tape)
+    }
 
     return &result, stringifiedData
 }
