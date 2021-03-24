@@ -139,8 +139,18 @@ func Execute(request Request) (*Result, string) {
         result.SetErrorInfo(err, nil)
         return &result, ""
     }
+
+    // execute jit code
+    if JIT_ENABLED {
+        JITResult = ""
+        if JITResult, err = steppingSelectionSet(g, request, selectionSet, objectFields, nil); err != nil {
+            result.SetErrorInfo(err, nil)
+            return &result, ""
+        }
+        return &result, JITResult
+    }
     
-    // execute
+    // execute native code
     var resolvedResult interface{}
     if resolvedResult, err = resolveSelectionSet(g, request, selectionSet, objectFields, nil); err != nil {
         result.SetErrorInfo(err, nil)
