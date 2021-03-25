@@ -20,6 +20,7 @@ import (
 
 const DUMP_FRONTEND = false
 
+
 type Request struct {
     // GraphQL Schema config for server side
     Schema Schema 
@@ -141,8 +142,12 @@ func Execute(request Request) (*Result, string) {
     }
 
     // execute jit code
-    if JIT_ENABLED {
-        JITResult = ""
+    if ENABLE_JIT {
+        // init
+        fmap := NewResolveFunctionMap()
+        buildSchemaResolveFunctionMap(objectFields, fmap)
+        // exec
+        JITResult := ""
         if JITResult, err = steppingSelectionSet(g, request, selectionSet, objectFields, nil); err != nil {
             result.SetErrorInfo(err, nil)
             return &result, ""

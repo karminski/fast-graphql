@@ -16,3 +16,7 @@ const DISABLED = false
  * IMPORTANT: DISABLE this option can improve performance.
  */
 const ENABLE_SUBSCRIPTION_EXECUTOR = ENABLED
+
+
+
+const ENABLE_JIT = ENABLED

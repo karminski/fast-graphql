@@ -13,7 +13,6 @@ function m0()
     buf[#buf+1] = "{\"data\":"
     
     -- get user data by param from [go runtime]
-
     local user = _G.User 
     
     -- resolve user
