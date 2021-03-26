@@ -144,8 +144,7 @@ func Execute(request Request) (*Result, string) {
     // execute jit code
     if ENABLE_JIT {
         // init
-        fmap := NewResolveFunctionMap()
-        buildSchemaResolveFunctionMap(objectFields, fmap)
+        
         // exec
         JITResult := ""
         if JITResult, err = steppingSelectionSet(g, request, selectionSet, objectFields, nil); err != nil {

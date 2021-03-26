@@ -124,6 +124,90 @@ func fromGoValue(vm *LuaState, value interface{}, outValue *C.struct_lua_value) 
 
 			entry = entry.next
 		}
+	case map[string]interface{}:
+		if outValue == nil {
+			outValue = C.make_lua_value(vm._l)
+		}
+
+		outValue.temporary = C._Bool(true)
+		outValue.valueType = C.LUA_TUNROLLEDTABLE
+		valData := (*unsafe.Pointer)(unsafe.Pointer(&outValue.data))
+		table := C.build_unrolled_table(vm._l, C.int(len(v)))
+		*valData = unsafe.Pointer(table)
+
+		entry := table.first
+
+		for key, value := range v {
+			entry.key, err = fromGoValue(vm, key, entry.key)
+			if err != nil {
+				C.free_temporary_lua_value(vm._l, outValue);
+				return nil, err
+			}
+
+			entry.value, err = fromGoValue(vm, value, entry.value)
+			if err != nil {
+				C.free_temporary_lua_value(vm._l, outValue);
+				return nil, err
+			}
+
+			entry = entry.next
+		}
+	case []int:
+		if outValue == nil {
+			outValue = C.make_lua_value(vm._l)
+		}
+
+		outValue.temporary = C._Bool(true)
+		outValue.valueType = C.LUA_TUNROLLEDTABLE
+		valData := (*unsafe.Pointer)(unsafe.Pointer(&outValue.data))
+		table := C.build_unrolled_table(vm._l, C.int(len(v)))
+		*valData = unsafe.Pointer(table)
+
+		entry := table.first
+
+		for key, value := range v {
+			entry.key, err = fromGoValue(vm, key, entry.key)
+			if err != nil {
+				C.free_temporary_lua_value(vm._l, outValue);
+				return nil, err
+			}
+
+			entry.value, err = fromGoValue(vm, value, entry.value)
+			if err != nil {
+				C.free_temporary_lua_value(vm._l, outValue);
+				return nil, err
+			}
+
+			entry = entry.next
+		}
+	case []interface{}:
+		if outValue == nil {
+			outValue = C.make_lua_value(vm._l)
+		}
+
+		outValue.temporary = C._Bool(true)
+		outValue.valueType = C.LUA_TUNROLLEDTABLE
+		valData := (*unsafe.Pointer)(unsafe.Pointer(&outValue.data))
+		table := C.build_unrolled_table(vm._l, C.int(len(v)))
+		*valData = unsafe.Pointer(table)
+
+		entry := table.first
+
+		for key, value := range v {
+			entry.key, err = fromGoValue(vm, key, entry.key)
+			if err != nil {
+				C.free_temporary_lua_value(vm._l, outValue);
+				return nil, err
+			}
+
+			entry.value, err = fromGoValue(vm, value, entry.value)
+			if err != nil {
+				C.free_temporary_lua_value(vm._l, outValue);
+				return nil, err
+			}
+
+			entry = entry.next
+		}
 	default:
 		return nil, errors.New("cannot marshal unknown type into lua")
 	}

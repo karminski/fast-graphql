@@ -9,9 +9,12 @@ package luajitter
 import "C"
 import (
 	"unsafe"
+	"sync"
 )
 
-var vmMap = make(map[*C.lua_State]*LuaState)
+var vmSMap sync.Map
+
+// var vmMap = make(map[*C.lua_State]*LuaState)
 
 type LuaState struct {
 	_l *C.lua_State
@@ -22,12 +25,12 @@ func NewState() *LuaState {
 	state := &LuaState{
 		_l: vm,
 	}
-	vmMap[vm] = state
+	vmSMap.Store(vm, state)
 	return state
 }
 
 func (s *LuaState) Close() error {
-	delete(vmMap, s._l)
+	vmSMap.Delete(s._l)
 	C.close_lua(s._l)
 	return nil
 }

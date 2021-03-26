@@ -47,12 +47,7 @@ function resolveUser(user)
     buf[#buf+1] = "}"
 end
 
-function resolveFriends(friendIDs)
-    -- get friends details from [go runtime]
-
-    local friends = _G.Friends
-
-    -- resolve friends
+function resolveFriends(friends)
     l = #friends
     buf[#buf+1] = "["
     for i=1, l do
@@ -64,26 +59,9 @@ function resolveFriends(friendIDs)
     buf[#buf+1] = "]"
 end
 
-function resolveFriend(friend)
-    buf[#buf+1] = "{"
-    buf[#buf+1] = "\"Id\":"
-    buf[#buf+1] = friend.Id
-    buf[#buf+1] = ",\"Name\":"
-    buf[#buf+1] = friend.Name
-    buf[#buf+1] = ",\"Email\":"
-    buf[#buf+1] = friend.Email
-    buf[#buf+1] = ",\"Married\":"
-    buf[#buf+1] = friend.Married
-    buf[#buf+1] = ",\"Height\":"
-    buf[#buf+1] = friend.Height
-    buf[#buf+1] = ",\"Gender\":"
-    buf[#buf+1] = friend.Gender
-    buf[#buf+1] = ",\"Location\":"
-    resolveLocation(friend.Location)
-    buf[#buf+1] = "}"
-end
 
-function resolveLocation(location)
+
+function resolveLocation(buf, location)
     buf[#buf+1] = "{"
     buf[#buf+1] = "\"City\":"
     buf[#buf+1] = location.City

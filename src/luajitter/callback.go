@@ -25,7 +25,8 @@ func callbackGoFunction(_L *C.lua_State, handle unsafe.Pointer, args C.lua_args,
 		return
 	}
 
-	state := vmMap[_L]
+	sstate, _ := vmSMap.Load(_L)
+	state := sstate.(*LuaState)
 	argCount := int(args.valueCount)
 	argsList := (*[1 << 30]*C.struct_lua_value)(unsafe.Pointer(args.values))
 	goArgs := buildGoValues(state, argCount, argsList)
