@@ -140,6 +140,16 @@ func Execute(request Request) (*Result, string) {
         return &result, ""
     }
     
+    // execute cache
+    if ENABLE_REFLECT_CACHE {
+        var cachedr string
+        if cachedr, err = steppingSelectionSet(g, request, selectionSet, objectFields, nil); err != nil {
+            result.SetErrorInfo(err, nil)
+            return &result, ""
+        }
+        return nil, cachedr
+    }
+
     // execute
     var resolvedResult interface{}
     if resolvedResult, err = resolveSelectionSet(g, request, selectionSet, objectFields, nil); err != nil {
