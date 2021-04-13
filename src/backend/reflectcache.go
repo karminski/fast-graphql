@@ -1,41 +1,11 @@
 package backend
 
 import (
-	"sync"
-	"reflect"
 	"errors"
     "fast-graphql/src/frontend"
 
 )
 
-// A field represents a single field found in a struct.
-type field struct {
-	name          string
-	nameb         []byte     
-	stringifyFunc StringifyFunc
-	
-}
-
-
-type structFields struct {
-	list      []field
-	nameIndex map[string]int
-}
-
-var fieldCache sync.Map // map[reflect.Type]structFields
-
-
-func getCachedTypeFields(t reflect.Type) structFields {
-	if f, ok := fieldCache.Load(t); ok {
-		return f.(structFields)
-	}
-	f, _ := fieldCache.LoadOrStore(t, getTypeFields(t))
-	return f.(structFields)
-}
-
-func getTypeFields(t reflect.Type) *structFields {
-	return nil
-}
 
 
 type StringifyFunc func(name string, value interface{})

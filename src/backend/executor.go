@@ -141,14 +141,14 @@ func Execute(request Request) (*Result, string) {
     }
     
     // execute cache
-    if ENABLE_REFLECT_CACHE {
-        var cachedr string
-        if cachedr, err = steppingSelectionSet(g, request, selectionSet, objectFields, nil); err != nil {
-            result.SetErrorInfo(err, nil)
-            return &result, ""
-        }
-        return nil, cachedr
-    }
+    // if ENABLE_REFLECT_CACHE {
+    //     var cachedr string
+    //     if cachedr, err = steppingSelectionSet(g, request, selectionSet, objectFields, nil); err != nil {
+    //         result.SetErrorInfo(err, nil)
+    //         return &result, ""
+    //     }
+    //     return nil, cachedr
+    // }
 
     // execute
     var resolvedResult interface{}
@@ -214,6 +214,8 @@ func resolveSelectionSet(g *GlobalVariables, request Request, selectionSet *fron
     for i, selection := range selections {
         field     := selection.(*frontend.Field)
         fieldName := field.GetFieldNameString()
+
+        // fmt.Printf("selecton.name: %s\n", fieldName)
 
         // stringify
         g.Stringifier.buildFieldPrefix(fieldName)
