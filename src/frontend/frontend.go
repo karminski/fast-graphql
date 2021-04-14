@@ -4,7 +4,6 @@
 package frontend
 
 import (
-	"crypto/md5"
 )
 
 func Compile(query string) (*Document, error) {
@@ -12,7 +11,7 @@ func Compile(query string) (*Document, error) {
 	var err error
 
 	// get ast cache
-	queryHash := md5.Sum([]byte(query))
+	queryHash := getQueryHash(query)
 	if cachedDoc, ok := loadAST(queryHash); ok {
 		return &cachedDoc, nil
 	}

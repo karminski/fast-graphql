@@ -13,7 +13,7 @@ import (
 
     // "strconv"
     // "os"
-    // "github.com/davecgh/go-spew/spew"
+    "github.com/davecgh/go-spew/spew"
 
 
 )
@@ -56,6 +56,12 @@ type GlobalVariables struct {
 
     // Stringifier
     Stringifier *Stringifier
+
+    // ParentName
+    ParentSelectionSetName map[int]string
+
+    // Now Layer
+    NowLayer int
 }
 
 func (result *Result) SetErrorInfo(err error, errorLocation *ErrorLocation) {
@@ -86,6 +92,9 @@ func NewGlobalVariables() *GlobalVariables {
         g.SubscriptionExecutor = NewSubscriptionExecutor()
     }
     g.Stringifier = NewStringifier()
+    g.NowLayer    = 0
+    g.ParentSelectionSetName = make(map[int]string)
+    g.ParentSelectionSetName[g.NowLayer] = "data"
     return g
 }
 
@@ -204,6 +213,8 @@ func resolveSelectionSet(g *GlobalVariables, request Request, selectionSet *fron
     selections  := selectionSet.GetSelections()
     finalResult := make(map[string]interface{}, len(selections))
 
+    
+
     // stringify
     g.Stringifier.buildObjectStart()
 
@@ -211,9 +222,22 @@ func resolveSelectionSet(g *GlobalVariables, request Request, selectionSet *fron
     var resolvedResult interface{}
     var err            error
     stopPos := len(selections) - 1
+
+    // record layer
+    var css cachedSelectionSet
+    css.Name = g.ParentSelectionSetName[g.NowLayer]
+    g.NowLayer ++
+    
+    // resolve selections
     for i, selection := range selections {
         field     := selection.(*frontend.Field)
         fieldName := field.GetFieldNameString()
+
+        // process cache
+        var cf cachedField
+        cf.Name = fieldName
+        css.Fields = append(css.Fields, cf) 
+        g.ParentSelectionSetName[g.NowLayer] = fieldName
 
         // fmt.Printf("selecton.name: %s\n", fieldName)
 
@@ -231,6 +255,9 @@ func resolveSelectionSet(g *GlobalVariables, request Request, selectionSet *fron
             g.Stringifier.buildComma() 
         }
     }
+
+    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+    spewo.Dump(css)
 
     // stringify
     g.Stringifier.buildObjectEnd()
@@ -715,7 +742,7 @@ func (object *Object) GetFields() ObjectFields {
 
 type ObjectField struct {
     Name            string               `json:name`
-    Type            FieldType            `json:type`  // maybe call this returnType?
+    Type            FieldType            `json:type`  // maybe call this field as returnType?
     Description     string               `json:description`
     Arguments       *Arguments           `json:arguments`    
     ResolveFunction ResolveFunction      `json:"-"`

@@ -2,13 +2,47 @@ package backend
 
 import (
 	"errors"
+	"sync"
     "fast-graphql/src/frontend"
+	"crypto/md5"
+	"encoding/hex"
 
 )
 
-
+var selectionSetCache sync.Map // map[selectionSetHash]cachedSelectionSet
 
 type StringifyFunc func(name string, value interface{})
+
+type cachedSelectionSet struct {
+	Name 		string
+	Fields 		[]cachedField
+}
+
+type cachedField struct {
+	Name 		  string
+	Type 		  FieldType
+	StringifyFunc StringifyFunc
+}
+
+func getSelectionSetHash(queryHash [16]byte, name string) [16]byte {
+	key := hex.EncodeToString(queryHash[:]) + name
+	return md5.Sum([]byte(key))
+}
+
+func saveSelectionSet(k [16]byte, c cachedSelectionSet) {
+	selectionSetCache.Store(k, c)
+}
+
+
+func loadSelectionSet(k [16]byte) (cachedSelectionSet, bool)  {
+	if c, ok := selectionSetCache.Load(k); ok {
+		return c.(cachedSelectionSet), true
+	}
+	var c cachedSelectionSet 
+	return c, false
+}
+
+
 
 
 
