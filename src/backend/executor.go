@@ -62,6 +62,9 @@ type GlobalVariables struct {
 
     // Now Layer
     NowLayer int
+
+    // query hash
+    queryHash [16]byte
 }
 
 func (result *Result) SetErrorInfo(err error, errorLocation *ErrorLocation) {
@@ -105,9 +108,11 @@ func Execute(request Request) (*Result, string) {
 
     result      := Result{} 
     g           := NewGlobalVariables()
+    queryHash   := frontend.GetQueryHash(request.Query)
+    g.queryHash = queryHash
 
     // process input
-    if document, err = frontend.Compile(request.Query); err != nil {
+    if document, err = frontend.Compile(request.Query, queryHash); err != nil {
         result.SetErrorInfo(err, nil)
         return &result, ""
     }
@@ -258,6 +263,9 @@ func resolveSelectionSet(g *GlobalVariables, request Request, selectionSet *fron
 
     spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
     spewo.Dump(css)
+
+    cssHash := GetSelectionSetHash(g.queryHash, css.Name)
+    saveSelectionSet(cssHash, css)
 
     // stringify
     g.Stringifier.buildObjectEnd()

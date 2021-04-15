@@ -24,7 +24,7 @@ type cachedField struct {
 	StringifyFunc StringifyFunc
 }
 
-func getSelectionSetHash(queryHash [16]byte, name string) [16]byte {
+func GetSelectionSetHash(queryHash [16]byte, name string) [16]byte {
 	key := hex.EncodeToString(queryHash[:]) + name
 	return md5.Sum([]byte(key))
 }

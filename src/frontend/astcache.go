@@ -3,14 +3,14 @@ package frontend
 import (
 	"sync"
 	"crypto/md5"
-	
+
 )
 
 
 
 var astCache sync.Map // map[queryHash]Document
 
-func getQueryHash(query string) [16]byte {
+func GetQueryHash(query string) [16]byte {
 	return md5.Sum([]byte(query))
 }
 
