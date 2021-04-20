@@ -159,13 +159,17 @@ func Execute(request Request) (*Result, string) {
         // check if cached
         cssHash := GetSelectionSetHash(g.queryHash, "data")
         // resolve by cached data   
-        if _, ok :=loadSelectionSet(cssHash); ok {
+        if css, ok :=loadSelectionSet(cssHash); ok {
             fmt.Printf("Got Cached data\n")
-            //if cachedResult, err := resolveCachedSelectionSet(g, request, selectionSet, objectFields, nil); err != nil {
-            //     result.SetErrorInfo(err, nil)
-            //    return &result, ""
-            //}
-            // return &result, cachedResult 
+            spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+            spewo.Dump(css)
+            var cachedResult string
+            var err          error
+            if cachedResult, err = resolveCachedSelectionSet(g, request, selectionSet, objectFields, nil, css); err != nil {
+                result.SetErrorInfo(err, nil)
+                return &result, ""
+            }
+            return &result, cachedResult 
         }
     }
 
@@ -245,6 +249,7 @@ func resolveSelectionSet(g *GlobalVariables, request Request, selectionSet *fron
 
         // process cache
         var cf cachedField
+        cf.Arguments = make(map[string]interface{})
         cf.Name = fieldName 
         g.ParentSelectionSetName[g.NowLayer] = fieldName
 
@@ -266,8 +271,7 @@ func resolveSelectionSet(g *GlobalVariables, request Request, selectionSet *fron
         css.Fields = append(css.Fields, cf) 
     }
 
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-    spewo.Dump(css)
+    
 
     cssHash := GetSelectionSetHash(g.queryHash, css.Name)
     saveSelectionSet(cssHash, css)
@@ -277,6 +281,7 @@ func resolveSelectionSet(g *GlobalVariables, request Request, selectionSet *fron
 
     return finalResult, nil
 }
+
 
 func defaultValueTypeAssertion(value interface{}) (interface{}, error) {
     // notice: the DefaultValue only accept const Value (Variables are not const Value)
@@ -358,7 +363,7 @@ func getQueryVariablesMap(request Request, variableDefinitions []*frontend.Varia
 }
 
 // build Field.Arguments map from GlobalVariables.QueryVariablesMap
-func getFieldArgumentsMap(g *GlobalVariables, arguments []*frontend.Argument) (map[string]interface{}, error) {
+func getFieldArgumentsMap(g *GlobalVariables, arguments []*frontend.Argument, cf cachedField) (map[string]interface{}, error) {
     fieldArgumentsMap := make(map[string]interface{}, len(arguments))
     
     for _, argument := range arguments {
@@ -394,6 +399,8 @@ func getFieldArgumentsMap(g *GlobalVariables, arguments []*frontend.Argument) (m
             err := "getFieldArgumentsMap(): Field.Arguments.Argument type assert failed, please check your GraphQL Field.Arguments.Argument syntax."
             return nil, errors.New(err)
         }
+        // fill field cache
+        cf.Arguments[argumentName] = nil
     }
     
     return fieldArgumentsMap, nil

@@ -6,6 +6,7 @@ import (
     "fast-graphql/src/frontend"
 	"crypto/md5"
 	"encoding/hex"
+	"fmt"
 
 )
 
@@ -21,6 +22,7 @@ type cachedSelectionSet struct {
 type cachedField struct {
 	Name 		    string
 	Type 		    int
+	Arguments 		map[string]interface{}
 	StringifyFunc   StringifyFunc
 	ResolveFunction ResolveFunction
 }
@@ -119,19 +121,54 @@ func callResolveFuncBySource(args []interface{}, fmap map[string]interface{}) (i
 
 
 
-func resolveCachedSelectionSet(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectFields ObjectFields, resolvedData interface{}) (string, error) {
-	fmap := NewResolveFunctionMap()
-    buildSchemaResolveFunctionMap(objectFields, fmap)
+func resolveCachedSelectionSet(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectFields ObjectFields, resolvedData interface{}, css cachedSelectionSet) (string, error) {
+	for _, cf := range css.Fields {
+		resolveCachedField(g, request, fieldName, cf, objectFields, resolvedData, css)
+	}
+
     return "", nil
 }
 
+func resolveCachedField(g *GlobalVariables, request Request, fieldName string, cf cachedField, objectFields ObjectFields, resolvedData interface{}, css cachedSelectionSet) {
+    var err error
+	fmt.Printf("resolveCachedField cf: %s\n", cf.Name)
+    
+    // resolve
+    if css.ResolveFunction != nil { // user defined resolve function avaliable
+        resolvedData, err = cachedSchemaResolveFunction(g, request, fieldName, field, objectFields, resolvedData, cf)
+        fmt.Printf("css.ResolveFunction != nil\n")
+    } 
 
-func resolveFieldByCache() {
-
+    cachedDefaultResolveFunction(g, request, objectFields[fieldName], resolvedData, cf)
 }
 
-func resolveFieldBySchema() {
 
+
+
+func cachedDefaultResolveFunction(g *GlobalVariables, request Request, objectField *ObjectField, resolvedData interface{}, cf *cachedField) {
+	switch cf.Type {
+	case FIELD_TYPE_SCALAR:
+		r0 := fastreflect.StructFieldByName(resolvedData, cf.Name)
+		cf.StringifyFunc(g.Stringifier, cf.Name, r0)
+	case FIELD_TYPE_LIST:
+		
+	case FIELD_TYPE_OBJECT:
+		resolveCachedSelectionSet(g, request)
+	}
 }
 
 
+func cachedSchemaResolveFunction(g *GlobalVariables, request Request, objectField *ObjectField, resolvedData interface{}, cf *cachedField) (interface{}, err) {
+	// build resolve params for resolve function
+    var resolveParams ResolveParams
+    var err           error
+    resolveParams.Source = resolvedData
+    for arg, _ := cf.Arguments {
+    	cf.Arguments[arg] = g.QueryVariablesMap[arg]
+    }
+    resolveParams.Arguments = cf.Arguments[arg]
+
+    // resolve
+    resolvedData, err = cf.ResolveFunction(resolveParams)
+    return resolvedData, err
+}
