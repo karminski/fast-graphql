@@ -11,7 +11,7 @@ import (
 
 var selectionSetCache sync.Map // map[selectionSetHash]cachedSelectionSet
 
-type StringifyFunc func(name string, value interface{})
+type StringifyFunc func(s Stringifier, name string, value interface{})
 
 type cachedSelectionSet struct {
 	Name 		string
@@ -19,9 +19,10 @@ type cachedSelectionSet struct {
 }
 
 type cachedField struct {
-	Name 		  string
-	Type 		  FieldType
-	StringifyFunc StringifyFunc
+	Name 		    string
+	Type 		    int
+	StringifyFunc   StringifyFunc
+	ResolveFunction ResolveFunction
 }
 
 func GetSelectionSetHash(queryHash [16]byte, name string) [16]byte {
@@ -30,7 +31,7 @@ func GetSelectionSetHash(queryHash [16]byte, name string) [16]byte {
 }
 
 func saveSelectionSet(k [16]byte, c cachedSelectionSet) {
-	selectionSetCache.Store(k, c)
+	selectionSetCache.LoadOrStore(k, c)
 }
 
 
@@ -89,16 +90,6 @@ func buildSchemaResolveFunctionMap(objectFields ObjectFields, fmap map[string]in
 	} 
 }
 
-// main JIT resolve method
-func steppingSelectionSet(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectFields ObjectFields, resolvedData interface{}) (string, error) {
-	fmap := NewResolveFunctionMap()
-    buildSchemaResolveFunctionMap(objectFields, fmap)
-
-    return "", nil
-
-}
-
-
 func callResolveFuncByArguments(args []interface{}, fmap map[string]interface{}) (interface{}, error) {
 	var field string
 	var p ResolveParams
@@ -123,3 +114,24 @@ func callResolveFuncBySource(args []interface{}, fmap map[string]interface{}) (i
 	}
 	return fmap[field].(ResolveFunction)(p)
 } 
+
+
+
+
+
+func resolveCachedSelectionSet(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectFields ObjectFields, resolvedData interface{}) (string, error) {
+	fmap := NewResolveFunctionMap()
+    buildSchemaResolveFunctionMap(objectFields, fmap)
+    return "", nil
+}
+
+
+func resolveFieldByCache() {
+
+}
+
+func resolveFieldBySchema() {
+
+}
+
+

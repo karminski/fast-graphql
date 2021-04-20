@@ -155,14 +155,19 @@ func Execute(request Request) (*Result, string) {
     }
     
     // execute cache
-    // if ENABLE_REFLECT_CACHE {
-    //     var cachedr string
-    //     if cachedr, err = steppingSelectionSet(g, request, selectionSet, objectFields, nil); err != nil {
-    //         result.SetErrorInfo(err, nil)
-    //         return &result, ""
-    //     }
-    //     return nil, cachedr
-    // }
+    if ENABLE_BACKEND_CACHE {
+        // check if cached
+        cssHash := GetSelectionSetHash(g.queryHash, "data")
+        // resolve by cached data   
+        if _, ok :=loadSelectionSet(cssHash); ok {
+            fmt.Printf("Got Cached data\n")
+            //if cachedResult, err := resolveCachedSelectionSet(g, request, selectionSet, objectFields, nil); err != nil {
+            //     result.SetErrorInfo(err, nil)
+            //    return &result, ""
+            //}
+            // return &result, cachedResult 
+        }
+    }
 
     // execute
     var resolvedResult interface{}
@@ -240,17 +245,14 @@ func resolveSelectionSet(g *GlobalVariables, request Request, selectionSet *fron
 
         // process cache
         var cf cachedField
-        cf.Name = fieldName
-        css.Fields = append(css.Fields, cf) 
+        cf.Name = fieldName 
         g.ParentSelectionSetName[g.NowLayer] = fieldName
-
-        // fmt.Printf("selecton.name: %s\n", fieldName)
 
         // stringify
         g.Stringifier.buildFieldPrefix(fieldName)
 
         // resolve
-        if resolvedResult, err = resolveField(g, request, fieldName, field, objectFields, resolvedData); err != nil {
+        if resolvedResult, err = resolveField(g, request, fieldName, field, objectFields, resolvedData, &cf); err != nil {
             return nil, err
         }
         finalResult[fieldName] = resolvedResult  
@@ -259,6 +261,9 @@ func resolveSelectionSet(g *GlobalVariables, request Request, selectionSet *fron
         if i < stopPos {
             g.Stringifier.buildComma() 
         }
+        
+        // process cache
+        css.Fields = append(css.Fields, cf) 
     }
 
     spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
@@ -406,7 +411,7 @@ func checkIfInputArgumentsAvaliable(inputArguments map[string]interface{}, targe
 
 
 
-func resolveField(g *GlobalVariables, request Request, fieldName string, field *frontend.Field, objectFields ObjectFields, resolvedData interface{}) (interface{}, error) {
+func resolveField(g *GlobalVariables, request Request, fieldName string, field *frontend.Field, objectFields ObjectFields, resolvedData interface{}, cf *cachedField) (interface{}, error) {
     var err error
 
     if _, ok := objectFields[fieldName]; !ok {
@@ -417,12 +422,12 @@ func resolveField(g *GlobalVariables, request Request, fieldName string, field *
     // resolve
     if schemaResolveFunctionAvaliable(fieldName, objectFields) {
         // execute schema resolve function
-        if resolvedData, err = schemaResolveFunction(g, request, fieldName, field, objectFields, resolvedData); err != nil {
+        if resolvedData, err = schemaResolveFunction(g, request, fieldName, field, objectFields, resolvedData, cf); err != nil {
             return nil, err
         }
     } 
 
-    if resolvedData, err = defaultResolveFunction(g, request, field.SelectionSet, objectFields[fieldName], resolvedData); err != nil {
+    if resolvedData, err = defaultResolveFunction(g, request, field.SelectionSet, objectFields[fieldName], resolvedData, cf); err != nil {
         return nil, err
     }
 
@@ -436,7 +441,18 @@ func schemaResolveFunctionAvaliable(fieldName string, objectFields ObjectFields)
     return false
 }
 
-func schemaResolveFunction(g *GlobalVariables, request Request, fieldName string, field *frontend.Field, objectFields ObjectFields, resolvedData interface{}) (interface{}, error) {
+func schemaResolveFunction(g *GlobalVariables, request Request, fieldName string, field *frontend.Field, objectFields ObjectFields, resolvedData interface{}, cf *cachedField) (interface{}, error) {
+    // build cacheField
+    objectField := objectFields[fieldName]
+    targetType := objectField.Type
+    if _, ok := targetType.(*Scalar); ok {
+        cf.Type = FIELD_TYPE_SCALAR
+    } else if _, ok := targetType.(*List); ok {
+        cf.Type = FIELD_TYPE_LIST
+    } else if _, ok := targetType.(*Object); ok {
+        cf.Type = FIELD_TYPE_OBJECT
+    }
+
     // build resolve params for resolve function
     var resolveParams ResolveParams
     var err           error
@@ -447,6 +463,7 @@ func schemaResolveFunction(g *GlobalVariables, request Request, fieldName string
 
     // get resolve function
     resolveFunction := objectFields[fieldName].ResolveFunction
+    cf.ResolveFunction = resolveFunction
 
     // execute
     if resolvedData, err = resolveFunction(resolveParams); err != nil {
@@ -494,19 +511,22 @@ func resolvedDataTypeChecker(fieldName string, resolvedData interface{}, expecte
 }
 
 
-func defaultResolveFunction(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
+func defaultResolveFunction(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}, cf *cachedField) (interface{}, error) {
     targetType := objectField.Type
     
     // get resolve target type
     if _, ok := targetType.(*Scalar); ok {
-        return resolveScalarData(g, request, selectionSet, objectField, resolvedData)
+        cf.Type = FIELD_TYPE_SCALAR
+        return resolveScalarData(g, request, selectionSet, objectField, resolvedData, cf)
     }
 
     if _, ok := targetType.(*List); ok {
+        cf.Type = FIELD_TYPE_LIST
         return resolveListData(g, request, selectionSet, objectField, resolvedData)
     } 
 
     if _, ok := targetType.(*Object); ok {
+        cf.Type = FIELD_TYPE_OBJECT
         return resolveObjectData(g, request, selectionSet, objectField, resolvedData)
     }
     return nil, errors.New("defaultResolveFunction(): can not resolve target field.")
@@ -514,13 +534,25 @@ func defaultResolveFunction(g *GlobalVariables, request Request, selectionSet *f
 }
 
 
-func resolveScalarData(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
+func resolveScalarData(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}, cf *cachedField) (interface{}, error) {
     // call resolve function
     targetFieldName := objectField.Name
     r0 := fastreflect.StructFieldByName(resolvedData, targetFieldName)
 
     // stringify
     g.Stringifier.buildScalar(r0)
+
+    // cache stringify method
+    switch r0.(type){
+    case string:
+        cf.StringifyFunc = buildStringField
+    case int:
+        cf.StringifyFunc = buildIntField
+    case float64:
+        cf.StringifyFunc = buildFloat64Field
+    case bool:
+        cf.StringifyFunc = buildBoolField
+    }
 
     return r0, nil
 }
@@ -610,6 +642,12 @@ type Type interface {
 type FieldType interface {
     GetName() string
 }
+
+const (
+    FIELD_TYPE_SCALAR = 1
+    FIELD_TYPE_LIST   = 2
+    FIELD_TYPE_OBJECT = 3
+)
 
 // List types
 
