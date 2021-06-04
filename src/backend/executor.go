@@ -13,7 +13,7 @@ import (
 
     // "strconv"
     // "os"
-    "github.com/davecgh/go-spew/spew"
+    // "github.com/davecgh/go-spew/spew"
 
 
 )
@@ -157,19 +157,18 @@ func Execute(request Request) (*Result, string) {
     // execute cache
     if ENABLE_BACKEND_CACHE {
         // check if cached
-        cssHash := GetSelectionSetHash(g.queryHash, "data")
+        cssHash := GetSelectionSetHash(g.queryHash, "data") // first selectionSet named "data"
         // resolve by cached data   
         if css, ok :=loadSelectionSet(cssHash); ok {
-            fmt.Printf("Got Cached data\n")
-            spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-            spewo.Dump(css)
-            var cachedResult string
             var err          error
-            if cachedResult, err = resolveCachedSelectionSet(g, request, selectionSet, objectFields, nil, css); err != nil {
+            if _, err = resolveCachedSelectionSet(g, request, selectionSet, objectFields, nil, css); err != nil {
                 result.SetErrorInfo(err, nil)
                 return &result, ""
             }
-            return &result, cachedResult 
+            // stringify
+            g.Stringifier.buildNoError()
+            stringifiedData := g.Stringifier.Stringify()
+            return &result, stringifiedData 
         }
     }
 
@@ -363,7 +362,7 @@ func getQueryVariablesMap(request Request, variableDefinitions []*frontend.Varia
 }
 
 // build Field.Arguments map from GlobalVariables.QueryVariablesMap
-func getFieldArgumentsMap(g *GlobalVariables, arguments []*frontend.Argument, cf cachedField) (map[string]interface{}, error) {
+func getFieldArgumentsMap(g *GlobalVariables, arguments []*frontend.Argument, cf *cachedField) (map[string]interface{}, error) {
     fieldArgumentsMap := make(map[string]interface{}, len(arguments))
     
     for _, argument := range arguments {
@@ -464,7 +463,7 @@ func schemaResolveFunction(g *GlobalVariables, request Request, fieldName string
     var resolveParams ResolveParams
     var err           error
     resolveParams.Source = resolvedData
-    if resolveParams.Arguments, err = getFieldArgumentsMap(g, field.Arguments); err != nil {
+    if resolveParams.Arguments, err = getFieldArgumentsMap(g, field.Arguments, cf); err != nil {
         return nil, err
     }
 
@@ -566,19 +565,19 @@ func resolveScalarData(g *GlobalVariables, request Request, selectionSet *fronte
 
 
 func resolveListData(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
-    allFields          := fastreflect.SliceAllElements(resolvedData)
+    allListElements    := fastreflect.SliceAllElements(resolvedData)
     targetObjectFields := objectField.Type.(*List).Payload.(*Object).Fields
 
     // allocate space for list data returns
-    finalResult := make([]interface{}, 0, len(allFields))
+    finalResult := make([]interface{}, 0, len(allListElements))
 
     // stringify
     g.Stringifier.buildArrayStart()
 
     // traverse list
-    stopPos := len(allFields) - 1
-    for i, field := range allFields {
-        selectionSetResult, _ := resolveSelectionSet(g, request, selectionSet, targetObjectFields, field)
+    stopPos := len(allListElements) - 1
+    for i, elements := range allListElements {
+        selectionSetResult, _ := resolveSelectionSet(g, request, selectionSet, targetObjectFields, elements)
         finalResult = append(finalResult, selectionSetResult)
 
         // stringify

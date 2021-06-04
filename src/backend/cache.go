@@ -6,13 +6,18 @@ import (
     "fast-graphql/src/frontend"
 	"crypto/md5"
 	"encoding/hex"
-	"fmt"
+	// "fmt"
+
+
+    "github.com/karminski/fastreflect"
+    // "github.com/davecgh/go-spew/spew"
+
 
 )
 
 var selectionSetCache sync.Map // map[selectionSetHash]cachedSelectionSet
 
-type StringifyFunc func(s Stringifier, name string, value interface{})
+type StringifyFunc func(s *Stringifier, value interface{})
 
 type cachedSelectionSet struct {
 	Name 		string
@@ -49,27 +54,19 @@ func loadSelectionSet(k [16]byte) (cachedSelectionSet, bool)  {
 
 
 
-func buildStringField(s Stringifier, field string, value interface{}) {
-    s.buildString(field)
-    s.buildColon()
+func buildStringField(s *Stringifier, value interface{}) {
     s.buildString(value.(string))
 }
 
-func buildIntField(s Stringifier, field string, value interface{}) {
-    s.buildString(field)
-    s.buildColon()
+func buildIntField(s *Stringifier, value interface{}) {
     s.buildInt(value.(int))
 }
 
-func buildFloat64Field(s Stringifier, field string, value interface{}) {
-    s.buildString(field)
-    s.buildColon()
+func buildFloat64Field(s *Stringifier, value interface{}) {
     s.buildFloat64(value.(float64))
 }
 
-func buildBoolField(s Stringifier, field string, value interface{}) {
-    s.buildString(field)
-    s.buildColon()
+func buildBoolField(s *Stringifier, value interface{}) {
     s.buildBool(value.(bool))
 }
 
@@ -122,51 +119,106 @@ func callResolveFuncBySource(args []interface{}, fmap map[string]interface{}) (i
 
 
 func resolveCachedSelectionSet(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectFields ObjectFields, resolvedData interface{}, css cachedSelectionSet) (string, error) {
-	for _, cf := range css.Fields {
-		resolveCachedField(g, request, fieldName, cf, objectFields, resolvedData, css)
+	// stringify
+    g.Stringifier.buildObjectStart()
+
+
+	var err 		   error
+
+	// resolve field
+	for i, cf := range css.Fields {
+		// stringify
+        g.Stringifier.buildFieldPrefix(cf.Name)
+
+		if _, err = resolveCachedField(g, request, selectionSet, cf.Name, cf, objectFields, resolvedData, css); err != nil {
+			return "", err
+		} 
+		// stringify
+        if i < len(css.Fields) {
+            g.Stringifier.buildComma() 
+        }
 	}
+
+	// stringify
+    g.Stringifier.buildObjectEnd()
 
     return "", nil
 }
 
-func resolveCachedField(g *GlobalVariables, request Request, fieldName string, cf cachedField, objectFields ObjectFields, resolvedData interface{}, css cachedSelectionSet) {
+func resolveCachedField(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, fieldName string, cf cachedField, objectFields ObjectFields, resolvedData interface{}, css cachedSelectionSet) (interface{}, error) {
     var err error
-	fmt.Printf("resolveCachedField cf: %s\n", cf.Name)
-    
-    // resolve
-    if css.ResolveFunction != nil { // user defined resolve function avaliable
-        resolvedData, err = cachedSchemaResolveFunction(g, request, fieldName, field, objectFields, resolvedData, cf)
-        fmt.Printf("css.ResolveFunction != nil\n")
+    // resolve by user defined function
+    if cf.ResolveFunction != nil { // user defined resolve function avaliable
+        if resolvedData, err = cachedSchemaResolveFunction(g, request, resolvedData, cf); err != nil {
+        	return nil, err
+        }
     } 
+    // resolve by default function
+    if resolvedData, err = cachedDefaultResolveFunction(g, request, selectionSet, objectFields[fieldName], resolvedData, cf); err != nil {
+    	return nil, err
+    }
 
-    cachedDefaultResolveFunction(g, request, objectFields[fieldName], resolvedData, cf)
+    return resolvedData, nil
 }
 
 
 
 
-func cachedDefaultResolveFunction(g *GlobalVariables, request Request, objectField *ObjectField, resolvedData interface{}, cf *cachedField) {
+func cachedDefaultResolveFunction(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}, cf cachedField) (interface{}, error) {
 	switch cf.Type {
 	case FIELD_TYPE_SCALAR:
 		r0 := fastreflect.StructFieldByName(resolvedData, cf.Name)
-		cf.StringifyFunc(g.Stringifier, cf.Name, r0)
+		cf.StringifyFunc(g.Stringifier, r0)
+		return nil, nil
 	case FIELD_TYPE_LIST:
-		
+    	allListElements := fastreflect.SliceAllElements(resolvedData)
+	    targetObjectFields := objectField.Type.(*List).Payload.(*Object).Fields
+
+    	// stringify
+    	g.Stringifier.buildArrayStart()
+
+    	// traverse list
+    	stopPos := len(allListElements) - 1
+    	for i, elements := range allListElements {
+			cssHash := GetSelectionSetHash(g.queryHash, objectField.Name)
+			if css, ok :=loadSelectionSet(cssHash); ok {
+    			if _, err := resolveCachedSelectionSet(g, request, selectionSet, targetObjectFields, elements, css); err != nil {
+    				return nil, err
+    			}
+    		    // stringify
+    			if i < stopPos {
+    			    g.Stringifier.buildComma() 
+    			}
+    		}
+    	}
+    	// stringify
+    	g.Stringifier.buildArrayEnd()
+    	return nil, nil
 	case FIELD_TYPE_OBJECT:
-		resolveCachedSelectionSet(g, request)
+		targetObjectFields := objectField.Type.(*Object).Fields
+
+        r0 := fastreflect.StructFieldByName(resolvedData, objectField.Name)
+    	if r0 != nil {
+    	    resolvedData = r0
+    	}
+		cssHash := GetSelectionSetHash(g.queryHash, objectField.Name)
+		if css, ok :=loadSelectionSet(cssHash); ok {
+			return resolveCachedSelectionSet(g, request, selectionSet, targetObjectFields, resolvedData, css)
+		}
 	}
+    return nil, errors.New("defaultResolveFunction(): can not resolve target field.")
 }
 
 
-func cachedSchemaResolveFunction(g *GlobalVariables, request Request, objectField *ObjectField, resolvedData interface{}, cf *cachedField) (interface{}, err) {
+func cachedSchemaResolveFunction(g *GlobalVariables, request Request, resolvedData interface{}, cf cachedField) (interface{}, error) {
 	// build resolve params for resolve function
     var resolveParams ResolveParams
     var err           error
     resolveParams.Source = resolvedData
-    for arg, _ := cf.Arguments {
+    for arg, _ := range cf.Arguments {
     	cf.Arguments[arg] = g.QueryVariablesMap[arg]
     }
-    resolveParams.Arguments = cf.Arguments[arg]
+    resolveParams.Arguments = cf.Arguments
 
     // resolve
     resolvedData, err = cf.ResolveFunction(resolveParams)
