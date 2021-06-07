@@ -215,10 +215,10 @@ func cachedSchemaResolveFunction(g *GlobalVariables, request Request, resolvedDa
     var resolveParams ResolveParams
     var err           error
     resolveParams.Source = resolvedData
+    resolveParams.Arguments = make(map[string]interface{}, len(cf.Arguments))
     for arg, _ := range cf.Arguments {
-    	cf.Arguments[arg] = g.QueryVariablesMap[arg]
+    	resolveParams.Arguments[arg] = g.QueryVariablesMap[arg]
     }
-    resolveParams.Arguments = cf.Arguments
 
     // resolve
     resolvedData, err = cf.ResolveFunction(resolveParams)
