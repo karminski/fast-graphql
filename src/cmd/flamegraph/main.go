@@ -1,13 +1,15 @@
 package main
 
 import (
+    "fast-graphql/src/graphql"
+    "fast-graphql/src/frontend"
+    "fast-graphql/src/backend"
+    
     "encoding/json"
     "fmt"
     "net/http"
     "io/ioutil"
     "math/rand"
-    "fast-graphql/src/backend"
-    "fast-graphql/src/frontend"
     "errors"
     "strconv"
     "io"
@@ -544,11 +546,10 @@ func executeQuery(query string, variables map[string]interface{}, schema backend
     var result *backend.Result 
     var stringifiedResult string
     // execute
-    result, stringifiedResult = backend.Execute(backend.Request{
-        Schema: schema,
+    result, stringifiedResult = backend.Execute(graphql.Request{
         Query:  query,
         Variables: variables,
-    })
+    }, schema)
     if len(result.Errors) > 0 {
         fmt.Printf("\n\n\n")
         fmt.Printf("errors: %v", result.Errors)

@@ -3,6 +3,7 @@ package backend
 
 import (
     "fast-graphql/src/frontend"
+    "fast-graphql/src/graphql"
     "fmt"
     "errors"
     "log"
@@ -20,16 +21,7 @@ import (
 
 const DUMP_FRONTEND = false
 
-type Request struct {
-    // GraphQL Schema config for server side
-    Schema Schema 
 
-    // GraphQL Query string from client side
-    Query string 
-
-    // GraphQL Query variables from client side
-    Variables map[string]interface{}
-}
 
 type Result struct {
     Data      interface{} `json:"data"`
@@ -101,21 +93,21 @@ func NewGlobalVariables() *GlobalVariables {
     return g
 }
 
-func Execute(request Request) (*Result, string) {
+func Execute(request graphql.Request, schema Schema) (*Result, string) {
 
     var document *frontend.Document
     var err       error
 
     result      := Result{} 
     g           := NewGlobalVariables()
-    queryHash   := frontend.GetQueryHash(request.Query)
-    g.queryHash = queryHash
 
     // process input
-    if document, err = frontend.Compile(request.Query, queryHash); err != nil {
+    if document, err = frontend.Compile(request); err != nil {
         result.SetErrorInfo(err, nil)
         return &result, ""
     }
+
+    g.queryHash = request.QueryHash
 
     // if DUMP_FRONTEND {
     //     spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
@@ -125,7 +117,7 @@ func Execute(request Request) (*Result, string) {
 
     // @todo: THE DOCUMENT NEED VALIDATE!
     
-    // get top layer SelectionSet.Fields and request.Schema.ObjectFields
+    // get top layer SelectionSet.Fields and Schema.ObjectFields
     var operationDefinition *frontend.OperationDefinition
     if operationDefinition, err = document.GetOperationDefinition(); err != nil {
         result.SetErrorInfo(err, nil)
@@ -142,14 +134,14 @@ func Execute(request Request) (*Result, string) {
     // get schema object fields
     var objectFields ObjectFields
     operationType := operationDefinition.OperationType
-    if operationType == frontend.OperationTypeQuery && request.Schema.Query != nil {
-        objectFields = request.Schema.GetQueryObjectFields()
-    } else if operationType == frontend.OperationTypeMutation && request.Schema.Mutation != nil {
-        objectFields = request.Schema.GetMutationObjectFields()
-    } else if operationType == frontend.OperationTypeSubscription && request.Schema.Subscription != nil {
-        objectFields = request.Schema.GetSubscriptionObjectFields()
+    if operationType == frontend.OperationTypeQuery && schema.Query != nil {
+        objectFields = schema.GetQueryObjectFields()
+    } else if operationType == frontend.OperationTypeMutation && schema.Mutation != nil {
+        objectFields = schema.GetMutationObjectFields()
+    } else if operationType == frontend.OperationTypeSubscription && schema.Subscription != nil {
+        objectFields = schema.GetSubscriptionObjectFields()
     } else {
-        err = errors.New("Execute(): request.Schema should have Query or Mutation or Subscription field, please check server side Schema definition.")
+        err = errors.New("Execute(): schema should have Query or Mutation or Subscription field, please check server side Schema definition.")
         result.SetErrorInfo(err, nil)
         return &result, ""
     }
@@ -218,7 +210,7 @@ func getSubObjectFields(objectField *ObjectField) ObjectFields {
     return nil
 }
 
-func resolveSelectionSet(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectFields ObjectFields, resolvedData interface{}) (interface{}, error) {
+func resolveSelectionSet(g *GlobalVariables, request graphql.Request, selectionSet *frontend.SelectionSet, objectFields ObjectFields, resolvedData interface{}) (interface{}, error) {
     if selectionSet == nil {
         return nil, errors.New("resolveSelectionSet(): empty selectionSet input.")
     }
@@ -326,7 +318,7 @@ func correctJsonUnmarshalIntValue(value interface{}, variableType frontend.Type)
 }
 
 // build QueryVariables map from user input request.Variables
-func getQueryVariablesMap(request Request, variableDefinitions []*frontend.VariableDefinition) (map[string]interface{}, error) {
+func getQueryVariablesMap(request graphql.Request, variableDefinitions []*frontend.VariableDefinition) (map[string]interface{}, error) {
     var err error
     queryVariablesMap := make(map[string]interface{}, len(variableDefinitions))
     
@@ -417,7 +409,7 @@ func checkIfInputArgumentsAvaliable(inputArguments map[string]interface{}, targe
 
 
 
-func resolveField(g *GlobalVariables, request Request, fieldName string, field *frontend.Field, objectFields ObjectFields, resolvedData interface{}, cf *cachedField) (interface{}, error) {
+func resolveField(g *GlobalVariables, request graphql.Request, fieldName string, field *frontend.Field, objectFields ObjectFields, resolvedData interface{}, cf *cachedField) (interface{}, error) {
     var err error
 
     if _, ok := objectFields[fieldName]; !ok {
@@ -447,7 +439,7 @@ func schemaResolveFunctionAvaliable(fieldName string, objectFields ObjectFields)
     return false
 }
 
-func schemaResolveFunction(g *GlobalVariables, request Request, fieldName string, field *frontend.Field, objectFields ObjectFields, resolvedData interface{}, cf *cachedField) (interface{}, error) {
+func schemaResolveFunction(g *GlobalVariables, request graphql.Request, fieldName string, field *frontend.Field, objectFields ObjectFields, resolvedData interface{}, cf *cachedField) (interface{}, error) {
     // build cacheField
     objectField := objectFields[fieldName]
     targetType := objectField.Type
@@ -517,7 +509,7 @@ func resolvedDataTypeChecker(fieldName string, resolvedData interface{}, expecte
 }
 
 
-func defaultResolveFunction(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}, cf *cachedField) (interface{}, error) {
+func defaultResolveFunction(g *GlobalVariables, request graphql.Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}, cf *cachedField) (interface{}, error) {
     targetType := objectField.Type
     
     // get resolve target type
@@ -540,7 +532,7 @@ func defaultResolveFunction(g *GlobalVariables, request Request, selectionSet *f
 }
 
 
-func resolveScalarData(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}, cf *cachedField) (interface{}, error) {
+func resolveScalarData(g *GlobalVariables, request graphql.Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}, cf *cachedField) (interface{}, error) {
     // call resolve function
     targetFieldName := objectField.Name
     r0 := fastreflect.StructFieldByName(resolvedData, targetFieldName)
@@ -564,7 +556,7 @@ func resolveScalarData(g *GlobalVariables, request Request, selectionSet *fronte
 }
 
 
-func resolveListData(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
+func resolveListData(g *GlobalVariables, request graphql.Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
     allListElements    := fastreflect.SliceAllElements(resolvedData)
     targetObjectFields := objectField.Type.(*List).Payload.(*Object).Fields
 
@@ -592,7 +584,7 @@ func resolveListData(g *GlobalVariables, request Request, selectionSet *frontend
     return finalResult, nil
 }
 
-func resolveObjectData(g *GlobalVariables, request Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
+func resolveObjectData(g *GlobalVariables, request graphql.Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
     // check if object type schema need default resolve function to get data
     // @todo: add a check method for situations that can be ignored
     // r0 := getResolvedDataByFieldName(objectField.Name, resolvedData)
