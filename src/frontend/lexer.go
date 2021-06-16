@@ -170,14 +170,19 @@ type Lexer struct {
     nextToken           string 
     nextTokenType       int 
     nextTokenLineNum    int
+    pos                 int    // now position of document 
 }
 
 func NewLexer(document string) *Lexer {
-    return &Lexer{document, 1, "", 0, 0} // start at line 1 in default.
+    return &Lexer{document, 1, "", 0, 0, 0} // start at line 1 in default.
 }
 
 func (lexer *Lexer) GetLineNum() int {
     return lexer.lineNum
+}
+
+func (lexer *Lexer) GetPos() int {
+    return lexer.pos
 }
 
 func (lexer *Lexer) NextTokenIs(tokenType int) (lineNum int, token string) {
@@ -221,6 +226,7 @@ func (lexer *Lexer) nextDocumentIs(s string) bool {
 }
 
 func (lexer *Lexer) skipDocument(n int) {
+    lexer.pos += n
     lexer.document = lexer.document[n:]
 }
 

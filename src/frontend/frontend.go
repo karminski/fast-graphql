@@ -12,22 +12,23 @@ import (
 )
 
 // generate query hash, documents, Variables
-func Compile(request graphql.Request) (*Document, error) {
+func Compile(request *graphql.Request) (*Document, error) {
 	var document *Document
 	var err error
 
     // get query hash
-    request.QueryHash = GetQueryHash(request.Query)
+    request.GenerateQueryHash()
 
 	// get ast cache
-	if cachedDoc, ok := loadAST(request.QueryHash); ok {
+	if cachedDoc, ok := loadAST(request); ok {
 		return &cachedDoc, nil
 	}
 
     // Arguments Scanner
     var ctx  *ContextWithArguments
-    ctx, err = ScanArguments(request.Query)
-    generateRequestVariables(request, ctx)
+    ctx, err = ScanArguments(request)
+    GenerateRequestVariables(request, ctx)
+    ArgumentsSubstitution(request, ctx)
     spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
     spewo.Dump(ctx)
     spewo.Dump(request)
@@ -46,7 +47,7 @@ func Compile(request graphql.Request) (*Document, error) {
     lexer.NextTokenIs(TOKEN_EOF) 
     
     // set ast cache
-    saveAST(request.QueryHash, *document) 
+    saveAST(request, *document) 
 
     return document, nil
 }

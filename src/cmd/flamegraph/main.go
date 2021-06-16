@@ -4,7 +4,7 @@ import (
     "fast-graphql/src/graphql"
     "fast-graphql/src/frontend"
     "fast-graphql/src/backend"
-    
+
     "encoding/json"
     "fmt"
     "net/http"
@@ -545,6 +545,7 @@ var schema, _ = backend.NewSchema(
 func executeQuery(query string, variables map[string]interface{}, schema backend.Schema) (*backend.Result, string) {
     var result *backend.Result 
     var stringifiedResult string
+
     // execute
     result, stringifiedResult = backend.Execute(graphql.Request{
         Query:  query,

@@ -1,8 +1,9 @@
 package frontend
 
 import (
+    "fast-graphql/src/graphql"
+	
 	"sync"
-	"crypto/md5"
 
 )
 
@@ -10,12 +11,8 @@ import (
 
 var astCache sync.Map // map[queryHash]Document
 
-func GetQueryHash(query string) [16]byte {
-	return md5.Sum([]byte(query))
-}
-
-func loadAST(queryHash [16]byte) (Document, bool)  {
-	if doc, ok := astCache.Load(queryHash); ok {
+func loadAST(request *graphql.Request) (Document, bool)  {
+	if doc, ok := astCache.Load(request.QueryHash); ok {
 		return doc.(Document), true
 	}
 	var doc Document 
@@ -23,8 +20,8 @@ func loadAST(queryHash [16]byte) (Document, bool)  {
 }
 
 
-func saveAST(queryHash [16]byte, doc Document) {
-	astCache.Store(queryHash, doc)
+func saveAST(request *graphql.Request, doc Document) {
+	astCache.Store(request.QueryHash, doc)
 }
 
 

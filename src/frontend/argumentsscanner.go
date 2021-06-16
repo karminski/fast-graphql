@@ -4,8 +4,10 @@ package frontend
 
 import (
     "fast-graphql/src/graphql"
-
+    "errors"
     "fmt"
+    "bytes"
+
 )
 
 // arguments substitution
@@ -29,7 +31,7 @@ type VariableScanner struct {
 // 
 // TargetArguments Expression 
 // TargetArguments      ::= "(" Ignored Argument+ | VariableDefinition+ Ignored ")" Ignored
-// Argument             ::= Name Ignored ":" Ignored Value Ignored
+// TargetArgument       ::= Name Ignored ":" Ignored Value Ignored
 // VariableDefinition   ::= Variable Ignored ":" Ignored Type Ignored DefaultValue? Ignored
 // Variable             ::= "$" Name
 // DefaultValue         ::= "=" Ignored Value
@@ -41,16 +43,24 @@ type ContextWithArguments struct {
 }
 
 type TargetArguments struct {
-    Arguments         []*Argument
+    Arguments         []*TargetArgument
+}
+
+type TargetArgument struct {
+    LineNum        int
+    Name          *Name
+    Value          Value
+    ValueStartPos  int // for Argument Substitution
+    ValueEndPos    int // -
 }
 
 
-func ScanArguments(query string) (*ContextWithArguments, error) {
+func ScanArguments(request *graphql.Request) (*ContextWithArguments, error) {
     var ctx  *ContextWithArguments
     var err   error
 
     // parse
-    lexer := NewLexer(query)
+    lexer := NewLexer(request.Query)
     if ctx, err = parseContextWithArguments(lexer); err != nil {
         return nil, err
     }
@@ -104,28 +114,89 @@ func parseTargetArguments(lexer *Lexer) (*TargetArguments, error) {
         return nil, nil
     }
 
-    var argument *Argument
+    var targetArgument *TargetArgument
     for lexer.LookAhead() != TOKEN_RIGHT_PAREN {
-        if argument, err = parseArgument(lexer); err != nil {
+        if targetArgument, err = parseTargetArgument(lexer); err != nil {
             return nil, err
         }
-        TargetArguments.Arguments = append(TargetArguments.Arguments, argument)
+        TargetArguments.Arguments = append(TargetArguments.Arguments, targetArgument)
     }
     lexer.NextTokenIs(TOKEN_RIGHT_PAREN)
     return &TargetArguments, nil   
 }
 
+func parseTargetArgument(lexer *Lexer) (*TargetArgument, error) {
+    var targetArgument TargetArgument
+    var err            error
 
-func generateRequestVariables(request graphql.Request, ctx *ContextWithArguments) error {
+    // LineNum
+    targetArgument.LineNum = lexer.GetLineNum()
+    // Name
+    if targetArgument.Name, err = parseName(lexer); err != nil {
+        return nil, err
+    }
+    // ":"
+    lexer.NextTokenIs(TOKEN_COLON)
+    targetArgument.ValueStartPos = lexer.GetPos()
+    // Value
+    if targetArgument.Value, err = parseValue(lexer); err != nil {
+        return nil, err
+    }
+    targetArgument.ValueEndPos = lexer.GetPos()
+    return &targetArgument, nil
+}
+
+
+func GenerateRequestVariables(request *graphql.Request, ctx *ContextWithArguments) error {
+    request.InitSubstitutedVariables()
     for _, ta := range ctx.TargetArguments {
         for _, a := range ta.Arguments {
-            request.Variables[a.Name.Value] = a.Value
+            if val, ok := a.Value.(IntValue); ok {
+                request.SubstitutedVariables[a.Name.Value] = val.Value
+            } else if val, ok := a.Value.(FloatValue); ok {
+                request.SubstitutedVariables[a.Name.Value] = val.Value
+            } else if val, ok := a.Value.(StringValue); ok {
+                request.SubstitutedVariables[a.Name.Value] = val.Value
+            } else if val, ok := a.Value.(BooleanValue); ok {
+                request.SubstitutedVariables[a.Name.Value] = val.Value
+            } else if val, ok := a.Value.(NullValue); ok {
+                request.SubstitutedVariables[a.Name.Value] = val.Value
+            } else if val, ok := a.Value.(EnumValue); ok {
+                request.SubstitutedVariables[a.Name.Value] = val.Value
+            } else if val, ok := a.Value.(ListValue); ok {
+                request.SubstitutedVariables[a.Name.Value] = val.Value
+            } else if val, ok := a.Value.(ObjectValue); ok {
+                request.SubstitutedVariables[a.Name.Value] = val.Value
+            } else {
+                err := "generateRequestVariables(): ContextWithArguments.TargetArguments.Arguments type assert failed, please check your GraphQL Arguments syntax."
+                return errors.New(err)
+            }
         }
     }
     return nil
 }
 
 
-//func ArgumentsSubstitution(request Request) {
-//
-//}
+func ArgumentsSubstitution(request *graphql.Request, ctx *ContextWithArguments) {
+    var buffer bytes.Buffer
+    lastPos := 0
+    for _, tas := range ctx.TargetArguments {
+        for _, ta := range tas.Arguments {
+            if lastPos == 0 {
+                buffer.WriteString(request.Query[:ta.ValueStartPos])
+            } else {
+                buffer.WriteString(request.Query[lastPos:ta.ValueStartPos])
+            }
+            buffer.WriteString("$")
+            buffer.WriteString(ta.Name.Value)
+            lastPos = ta.ValueEndPos
+        }
+    }
+    buffer.WriteString(request.Query[lastPos:])
+
+    request.SubstituteQuery = buffer.String()
+
+    request.GenerateSubstituteQueryHash()
+    
+}
+

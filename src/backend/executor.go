@@ -102,7 +102,7 @@ func Execute(request graphql.Request, schema Schema) (*Result, string) {
     g           := NewGlobalVariables()
 
     // process input
-    if document, err = frontend.Compile(request); err != nil {
+    if document, err = frontend.Compile(&request); err != nil {
         result.SetErrorInfo(err, nil)
         return &result, ""
     }
