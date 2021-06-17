@@ -11,7 +11,7 @@ Query-Variables-Lexer-and-Parser.md
 
 # QueryVariables EBNF 定义
 
-QueryVariables ::= Ignored "{" Ignored Variables+ Ignored "}" Ignored
-Variables      ::= Ignored Name Ignored ":" Ignored Value Ignored
-Name           ::= '"' [_A-Za-z][_0-9A-Za-z]* '"'
-Value          ::= IntValue | FloatValue | StringValue | BooleanValue | NullValue 
+QueryVariables ::= Ignored "{" Ignored QueryVariable+ Ignored "}" Ignored
+QueryVariable  ::= Ignored VariableName Ignored ":" Ignored VariableValue Ignored
+VariableName   ::= StringValue
+VariableValue  ::= IntValue | FloatValue | StringValue | BooleanValue | NullValue 

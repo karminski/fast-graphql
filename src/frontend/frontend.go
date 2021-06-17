@@ -48,5 +48,3 @@ func Compile(request *graphql.Request) (*Document, error) {
 }
 
 
-
-

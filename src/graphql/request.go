@@ -11,14 +11,14 @@ type Request struct {
     // GraphQL Query string from client side
     Query string 
 
-
-    // md5 hash for Request.Query
+    // md5 hash for Query
     QueryHash [16]byte
 
-    SubstituteQuery string
+    // 
+    SubstitutedQuery string
 
-    SubstituteQueryHash [16]byte
-
+    // md5 hash for SubstitutedQuery
+    SubstitutedQueryHash [16]byte
 
     // GraphQL Query variables from client side
     Variables map[string]interface{}
@@ -31,8 +31,8 @@ func (r *Request)GenerateQueryHash() {
 	r.QueryHash	= md5.Sum([]byte(r.Query))
 }
 
-func (r *Request)GenerateSubstituteQueryHash() {
-	r.SubstituteQueryHash	= md5.Sum([]byte(r.SubstituteQuery))
+func (r *Request)GenerateSubstitutedQueryHash() {
+	r.SubstitutedQueryHash	= md5.Sum([]byte(r.SubstitutedQuery))
 }	
 
 func (r *Request)InitVariables() {

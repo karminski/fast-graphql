@@ -1,4 +1,4 @@
-// argumentsscanner.go
+// arguments_scanner.go
 
 package frontend
 
@@ -194,7 +194,7 @@ func ArgumentsSubstitution(request *graphql.Request, ctx *ContextWithArguments) 
     }
     // write back to query
     buffer.WriteString(request.Query[lastPos:])
-    request.SubstituteQuery = buffer.String()
-    request.GenerateSubstituteQueryHash()
+    request.SubstitutedQuery = buffer.String()
+    request.GenerateSubstitutedQueryHash()
 }
 

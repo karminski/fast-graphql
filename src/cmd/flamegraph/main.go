@@ -565,6 +565,15 @@ func main() {
         body, _ := ioutil.ReadAll(r.Body)
         err := json.Unmarshal([]byte(body), &decodedVariables)
 
+/*
+{
+    "query":"query UserInfo{\n  User(Id:1, Sid:12){\n    Id,\n    Name,\n    Email,\n    Married,\n    Height,\n    Gender,\n    Friends(Name:\"Bob\"){\n      Id,\n      Name,\n      Email,\n      Married,\n      Height,\n      Gender,\n      Location{\n        City,\n        Country,\n      },\n    },\n    Location{\n      City,\n      Country,\n    },\n  },\n},",
+    "variables":{"x":12},
+    "operationName":"UserInfo"
+}
+ */
+
+        fmt.Printf(string(body))
         if err != nil {
             fmt.Println(err)
         }
