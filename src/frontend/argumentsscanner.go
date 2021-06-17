@@ -192,11 +192,9 @@ func ArgumentsSubstitution(request *graphql.Request, ctx *ContextWithArguments) 
             lastPos = ta.ValueEndPos
         }
     }
+    // write back to query
     buffer.WriteString(request.Query[lastPos:])
-
     request.SubstituteQuery = buffer.String()
-
     request.GenerateSubstituteQueryHash()
-    
 }
 

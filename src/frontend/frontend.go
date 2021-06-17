@@ -6,7 +6,6 @@ package frontend
 import (
     "fast-graphql/src/graphql"
 
-    "os"
     "github.com/davecgh/go-spew/spew"
 
 )
@@ -30,12 +29,8 @@ func Compile(request *graphql.Request) (*Document, error) {
     GenerateRequestVariables(request, ctx)
     ArgumentsSubstitution(request, ctx)
     spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-    spewo.Dump(ctx)
     spewo.Dump(request)
 
-    if true {
-        os.Exit(1)
-    }
 
 	// parse
     lexer := NewLexer(request.Query)

@@ -320,14 +320,16 @@ func correctJsonUnmarshalIntValue(value interface{}, variableType frontend.Type)
 // build QueryVariables map from user input request.Variables
 func getQueryVariablesMap(request graphql.Request, variableDefinitions []*frontend.VariableDefinition) (map[string]interface{}, error) {
     var err error
-    queryVariablesMap := make(map[string]interface{}, len(variableDefinitions))
+    queryVariablesInRequest := request.GetQueryVariables()
+    queryVariablesMap       := make(map[string]interface{}, len(variableDefinitions))
     
     for _, variableDefinition := range variableDefinitions {
         // detect value type & fill
         variableName := variableDefinition.Variable.Value
         variableType := variableDefinition.Type
-        if matchedValue, ok := request.Variables[variableName]; ok {
+        if matchedValue, ok := queryVariablesInRequest[variableName]; ok {
             // convert float64 to int type for json.Unmarshal
+            // @TODO: remove this method by Query-Variables-Lexer-and-Parser
             if intValue, err := correctJsonUnmarshalIntValue(matchedValue, variableType); err == nil {
                 queryVariablesMap[variableName] = intValue
             } else{

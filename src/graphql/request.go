@@ -42,3 +42,10 @@ func (r *Request)InitVariables() {
 func (r *Request)InitSubstitutedVariables() {
 	r.SubstitutedVariables = make(map[string]interface{})
 }
+
+func (r *Request)GetQueryVariables() (map[string]interface{}) {
+	if len(r.SubstitutedVariables) != 0 {
+		return r.SubstitutedVariables
+	}
+	return r.Variables
+}
