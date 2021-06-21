@@ -93,18 +93,17 @@ func NewGlobalVariables() *GlobalVariables {
     return g
 }
 
-func Execute(request graphql.Request, schema Schema) (*Result, string) {
+func Execute(requestStr string, schema Schema) (string) {
 
     var document *frontend.Document
     var err       error
 
-    result      := Result{} 
-    g           := NewGlobalVariables()
+    g := NewGlobalVariables()
+    request := new(graphql.Request)
 
     // process input
-    if document, err = frontend.Compile(&request); err != nil {
-        result.SetErrorInfo(err, nil)
-        return &result, ""
+    if document, err = frontend.Compile(requestStr, request); err != nil {
+        return "error"
     }
 
     g.queryHash = request.QueryHash
@@ -120,14 +119,12 @@ func Execute(request graphql.Request, schema Schema) (*Result, string) {
     // get top layer SelectionSet.Fields and Schema.ObjectFields
     var operationDefinition *frontend.OperationDefinition
     if operationDefinition, err = document.GetOperationDefinition(); err != nil {
-        result.SetErrorInfo(err, nil)
-        return &result, ""
+        return "error"
     }
 
     // fill Query Variables Map
     if g.QueryVariablesMap, err = getQueryVariablesMap(request, operationDefinition.VariableDefinitions); err != nil {
-        result.SetErrorInfo(err, nil)
-        return &result, ""
+        return "error"
     }    
     selectionSet := operationDefinition.SelectionSet
 
@@ -142,8 +139,7 @@ func Execute(request graphql.Request, schema Schema) (*Result, string) {
         objectFields = schema.GetSubscriptionObjectFields()
     } else {
         err = errors.New("Execute(): schema should have Query or Mutation or Subscription field, please check server side Schema definition.")
-        result.SetErrorInfo(err, nil)
-        return &result, ""
+        return "error"
     }
     
     // execute cache
@@ -154,30 +150,30 @@ func Execute(request graphql.Request, schema Schema) (*Result, string) {
         if css, ok :=loadSelectionSet(cssHash); ok {
             var err          error
             if _, err = resolveCachedSelectionSet(g, request, selectionSet, objectFields, nil, css); err != nil {
-                result.SetErrorInfo(err, nil)
-                return &result, ""
+                return "error"
             }
             // stringify
             g.Stringifier.buildNoError()
             stringifiedData := g.Stringifier.Stringify()
-            return &result, stringifiedData 
+            return stringifiedData 
         }
     }
 
     // execute
     var resolvedResult interface{}
     if resolvedResult, err = resolveSelectionSet(g, request, selectionSet, objectFields, nil); err != nil {
-        result.SetErrorInfo(err, nil)
-        return &result, ""
+        return "error"
     }
     
-    result.Data = resolvedResult
+    if false {
+        fmt.Printf(resolvedResult.(string))
+    }
 
     // stringify
     g.Stringifier.buildNoError()
     stringifiedData := g.Stringifier.Stringify()
 
-    return &result, stringifiedData
+    return stringifiedData
 }
 
 
@@ -210,7 +206,7 @@ func getSubObjectFields(objectField *ObjectField) ObjectFields {
     return nil
 }
 
-func resolveSelectionSet(g *GlobalVariables, request graphql.Request, selectionSet *frontend.SelectionSet, objectFields ObjectFields, resolvedData interface{}) (interface{}, error) {
+func resolveSelectionSet(g *GlobalVariables, request *graphql.Request, selectionSet *frontend.SelectionSet, objectFields ObjectFields, resolvedData interface{}) (interface{}, error) {
     if selectionSet == nil {
         return nil, errors.New("resolveSelectionSet(): empty selectionSet input.")
     }
@@ -318,7 +314,7 @@ func correctJsonUnmarshalIntValue(value interface{}, variableType frontend.Type)
 }
 
 // build QueryVariables map from user input request.Variables
-func getQueryVariablesMap(request graphql.Request, variableDefinitions []*frontend.VariableDefinition) (map[string]interface{}, error) {
+func getQueryVariablesMap(request *graphql.Request, variableDefinitions []*frontend.VariableDefinition) (map[string]interface{}, error) {
     var err error
     queryVariablesInRequest := request.GetQueryVariables()
     queryVariablesMap       := make(map[string]interface{}, len(variableDefinitions))
@@ -411,7 +407,7 @@ func checkIfInputArgumentsAvaliable(inputArguments map[string]interface{}, targe
 
 
 
-func resolveField(g *GlobalVariables, request graphql.Request, fieldName string, field *frontend.Field, objectFields ObjectFields, resolvedData interface{}, cf *cachedField) (interface{}, error) {
+func resolveField(g *GlobalVariables, request *graphql.Request, fieldName string, field *frontend.Field, objectFields ObjectFields, resolvedData interface{}, cf *cachedField) (interface{}, error) {
     var err error
 
     if _, ok := objectFields[fieldName]; !ok {
@@ -441,7 +437,7 @@ func schemaResolveFunctionAvaliable(fieldName string, objectFields ObjectFields)
     return false
 }
 
-func schemaResolveFunction(g *GlobalVariables, request graphql.Request, fieldName string, field *frontend.Field, objectFields ObjectFields, resolvedData interface{}, cf *cachedField) (interface{}, error) {
+func schemaResolveFunction(g *GlobalVariables, request *graphql.Request, fieldName string, field *frontend.Field, objectFields ObjectFields, resolvedData interface{}, cf *cachedField) (interface{}, error) {
     // build cacheField
     objectField := objectFields[fieldName]
     targetType := objectField.Type
@@ -511,7 +507,7 @@ func resolvedDataTypeChecker(fieldName string, resolvedData interface{}, expecte
 }
 
 
-func defaultResolveFunction(g *GlobalVariables, request graphql.Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}, cf *cachedField) (interface{}, error) {
+func defaultResolveFunction(g *GlobalVariables, request *graphql.Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}, cf *cachedField) (interface{}, error) {
     targetType := objectField.Type
     
     // get resolve target type
@@ -534,7 +530,7 @@ func defaultResolveFunction(g *GlobalVariables, request graphql.Request, selecti
 }
 
 
-func resolveScalarData(g *GlobalVariables, request graphql.Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}, cf *cachedField) (interface{}, error) {
+func resolveScalarData(g *GlobalVariables, request *graphql.Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}, cf *cachedField) (interface{}, error) {
     // call resolve function
     targetFieldName := objectField.Name
     r0 := fastreflect.StructFieldByName(resolvedData, targetFieldName)
@@ -558,7 +554,7 @@ func resolveScalarData(g *GlobalVariables, request graphql.Request, selectionSet
 }
 
 
-func resolveListData(g *GlobalVariables, request graphql.Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
+func resolveListData(g *GlobalVariables, request *graphql.Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
     allListElements    := fastreflect.SliceAllElements(resolvedData)
     targetObjectFields := objectField.Type.(*List).Payload.(*Object).Fields
 
@@ -586,7 +582,7 @@ func resolveListData(g *GlobalVariables, request graphql.Request, selectionSet *
     return finalResult, nil
 }
 
-func resolveObjectData(g *GlobalVariables, request graphql.Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
+func resolveObjectData(g *GlobalVariables, request *graphql.Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}) (interface{}, error) {
     // check if object type schema need default resolve function to get data
     // @todo: add a check method for situations that can be ignored
     // r0 := getResolvedDataByFieldName(objectField.Name, resolvedData)
@@ -679,7 +675,7 @@ func (list *List) ToString() string {
     if list.Payload != nil {
         return fmt.Sprintf("[%v]", list.Payload)
     }
-    return ""
+    return "error"
 }
 
 // scalar definition

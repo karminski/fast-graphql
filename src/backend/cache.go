@@ -119,7 +119,7 @@ func callResolveFuncBySource(args []interface{}, fmap map[string]interface{}) (i
 
 
 
-func resolveCachedSelectionSet(g *GlobalVariables, request graphql.Request, selectionSet *frontend.SelectionSet, objectFields ObjectFields, resolvedData interface{}, css cachedSelectionSet) (string, error) {
+func resolveCachedSelectionSet(g *GlobalVariables, request *graphql.Request, selectionSet *frontend.SelectionSet, objectFields ObjectFields, resolvedData interface{}, css cachedSelectionSet) (string, error) {
 	// stringify
     g.Stringifier.buildObjectStart()
 
@@ -146,7 +146,7 @@ func resolveCachedSelectionSet(g *GlobalVariables, request graphql.Request, sele
     return "", nil
 }
 
-func resolveCachedField(g *GlobalVariables, request graphql.Request, selectionSet *frontend.SelectionSet, fieldName string, cf cachedField, objectFields ObjectFields, resolvedData interface{}, css cachedSelectionSet) (interface{}, error) {
+func resolveCachedField(g *GlobalVariables, request *graphql.Request, selectionSet *frontend.SelectionSet, fieldName string, cf cachedField, objectFields ObjectFields, resolvedData interface{}, css cachedSelectionSet) (interface{}, error) {
     var err error
     // resolve by user defined function
     if cf.ResolveFunction != nil { // user defined resolve function avaliable
@@ -165,7 +165,7 @@ func resolveCachedField(g *GlobalVariables, request graphql.Request, selectionSe
 
 
 
-func cachedDefaultResolveFunction(g *GlobalVariables, request graphql.Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}, cf cachedField) (interface{}, error) {
+func cachedDefaultResolveFunction(g *GlobalVariables, request *graphql.Request, selectionSet *frontend.SelectionSet, objectField *ObjectField, resolvedData interface{}, cf cachedField) (interface{}, error) {
 	switch cf.Type {
 	case FIELD_TYPE_SCALAR:
 		r0 := fastreflect.StructFieldByName(resolvedData, cf.Name)
@@ -211,7 +211,7 @@ func cachedDefaultResolveFunction(g *GlobalVariables, request graphql.Request, s
 }
 
 
-func cachedSchemaResolveFunction(g *GlobalVariables, request graphql.Request, resolvedData interface{}, cf cachedField) (interface{}, error) {
+func cachedSchemaResolveFunction(g *GlobalVariables, request *graphql.Request, resolvedData interface{}, cf cachedField) (interface{}, error) {
 	// build resolve params for resolve function
     var resolveParams ResolveParams
     var err           error

@@ -11,14 +11,20 @@ import (
 )
 
 // generate query hash, documents, Variables
-func Compile(request *graphql.Request) (*Document, error) {
+func Compile(requestStr string, request *graphql.Request) (*Document, error) {
 	var document *Document
-	var err error
+	var err       error
 
-    // get query hash
-    request.GenerateQueryHash()
+    // init request
+    if err = initRequestObject(requestStr, request); err != nil {
+        return nil, err
+    }
 
-	// get ast cache
+    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+    spewo.Dump(requestStr)
+    spewo.Dump(request)
+
+	// check if AST already cached
 	if cachedDoc, ok := loadAST(request); ok {
 		return &cachedDoc, nil
 	}
@@ -28,7 +34,6 @@ func Compile(request *graphql.Request) (*Document, error) {
     ctx, err = ScanArguments(request)
     GenerateRequestVariables(request, ctx)
     ArgumentsSubstitution(request, ctx)
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
     spewo.Dump(request)
 
 
@@ -47,4 +52,14 @@ func Compile(request *graphql.Request) (*Document, error) {
     return document, nil
 }
 
-
+// init request object, parse request string to request object, see (./DOCUMENTS/Request-Parser.md)
+func initRequestObject(requestStr string, request *graphql.Request) (error) {
+    // parse request
+    lexer := NewLexer(requestStr)
+    if err := parseRequest(lexer, request); err != nil {
+        return err
+    }
+    // get query hash
+    request.GenerateQueryHash()
+    return nil
+}

@@ -12,7 +12,7 @@ type QueryVariables map[string]interface{}
 // VariableName   ::= StringValue
 // VariableValue  ::= IntValue | FloatValue | StringValue | BooleanValue | NullValue 
 
-func ParseQueryVariables(lexer *Lexer) (QueryVariables, error) {
+func parseQueryVariables(lexer *Lexer) (QueryVariables, error) {
 	queryVariables := make(QueryVariables)
 	// start with "{"
     lexer.NextTokenIs(TOKEN_LEFT_BRACE)
@@ -38,7 +38,7 @@ func parseQueryVariable(lexer *Lexer) (string, interface{}, error) {
 	var value interface{}
 	var err   error
 
-	// json name "abc"
+	// json field name "xxx"
 	if name, err = parseStringValue(lexer); err != nil {
 		return name.Value, value, err
 	}
@@ -46,7 +46,7 @@ func parseQueryVariable(lexer *Lexer) (string, interface{}, error) {
 	// ":"
     lexer.NextTokenIs(TOKEN_COLON)
 
-    // value
+    // json value
     if value, err = parseStringValue(lexer); err != nil {
     	return name.Value, value, err
     }

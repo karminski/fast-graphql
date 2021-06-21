@@ -25,6 +25,9 @@ type Request struct {
 
     // substituted variables from arguments scanner
     SubstitutedVariables map[string]interface{}
+
+    // operation name from client side
+    OperationName string
 }
 
 func (r *Request)GenerateQueryHash() {

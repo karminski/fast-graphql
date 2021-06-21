@@ -1,12 +1,9 @@
 package main
 
 import (
-    "fast-graphql/src/graphql"
     "fast-graphql/src/frontend"
     "fast-graphql/src/backend"
 
-    "encoding/json"
-    "fmt"
     "net/http"
     "io/ioutil"
     "math/rand"
@@ -542,57 +539,17 @@ var schema, _ = backend.NewSchema(
 )
 
 
-func executeQuery(query string, variables map[string]interface{}, schema backend.Schema) (*backend.Result, string) {
-    var result *backend.Result 
-    var stringifiedResult string
-
-    // execute
-    result, stringifiedResult = backend.Execute(graphql.Request{
-        Query:  query,
-        Variables: variables,
-    }, schema)
-    if len(result.Errors) > 0 {
-        fmt.Printf("\n\n\n")
-        fmt.Printf("errors: %v", result.Errors)
-    }
-    return result, stringifiedResult
-}
-
 func main() {
     http.HandleFunc("/product", func(w http.ResponseWriter, r *http.Request) {
         // HTTP Post method
-        var decodedVariables map[string]interface{}
-        body, _ := ioutil.ReadAll(r.Body)
-        err := json.Unmarshal([]byte(body), &decodedVariables)
+        requestStr, _ := ioutil.ReadAll(r.Body)
 
-/*
-{
-    "query":"query UserInfo{\n  User(Id:1, Sid:12){\n    Id,\n    Name,\n    Email,\n    Married,\n    Height,\n    Gender,\n    Friends(Name:\"Bob\"){\n      Id,\n      Name,\n      Email,\n      Married,\n      Height,\n      Gender,\n      Location{\n        City,\n        Country,\n      },\n    },\n    Location{\n      City,\n      Country,\n    },\n  },\n},",
-    "variables":{"x":12},
-    "operationName":"UserInfo"
-}
- */
-
-        fmt.Printf(string(body))
-        if err != nil {
-            fmt.Println(err)
-        }
-
-        var variables map[string]interface{}
-        query     := decodedVariables["query"].(string)
-        if decodedVariables["variables"] != nil {
-            variables = decodedVariables["variables"].(map[string]interface{})
-        }
-        
         // execute
-        result, stringifiedResult := executeQuery(query, variables, schema)
+        resultStr := backend.Execute(string(requestStr), schema)
 
         // return
         w.Header().Set("content-type","text/json")
-        io.WriteString(w, stringifiedResult)
-        if false {
-            json.NewEncoder(w).Encode(result)
-        }
+        io.WriteString(w, resultStr)
     })
 
     // run     
