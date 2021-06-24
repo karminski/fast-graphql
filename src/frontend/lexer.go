@@ -6,6 +6,7 @@ import (
     "strings"
     "regexp"
     "fmt"
+    "errors"
 )
 
 // token const
@@ -86,7 +87,7 @@ var tokenNameMap = map[int]string{
 	TOKEN_DUOQUOTE 		   : "\"\"",
 	TOKEN_TRIQUOTE         : "\"\"\"",
 	TOKEN_HEXQUOTE 		   : "\"\"\"\"\"\"",
-    TOKEN_ESCAPE_CHARACTER : "\\"
+    TOKEN_ESCAPE_CHARACTER : "\\",
     TOKEN_NUMBER           : "number",
     TOKEN_IDENTIFIER       : "identifier",
     TOKEN_QUERY            : "query",
@@ -197,6 +198,7 @@ func (lexer *Lexer) NextTokenIs(tokenType int) (lineNum int, token string) {
         fmt.Println("- [Lexer Dump] -------------------------------------------------------\n")
         fmt.Printf("document:\n\n\033[33m%v\033[0m\n\n", lexer.document)
         fmt.Printf("lineNum:          \033[33m%v\033[0m\n", lexer.lineNum)
+        fmt.Printf("NextTokenIs:      \033[33m%v\033[0m\n", tokenNameMap[tokenType])
         fmt.Printf("nowToken:         \033[33m%v\033[0m\n", nowToken)
         fmt.Printf("nextToken:        \033[33m%v\033[0m\n", lexer.nextToken)
         fmt.Printf("nextTokenType:    \033[33m%v\033[0m\n", lexer.nextTokenType)
@@ -300,6 +302,25 @@ func (lexer *Lexer) scanBeforeToken(token string) string {
     }
     lexer.skipDocument(len(s[0]))
     return s[0]
+}
+
+// NOTE: this method can skip escape character 
+func (lexer *Lexer) scanBeforeByte(b byte) (string, error) {
+    docLen    := len(lexer.document)
+    var r string
+    i := 0
+    for ; i < docLen; i++ {
+        if lexer.document[i] == b {
+            // hit target
+            r = lexer.document[:i]
+            lexer.skipDocument(i)
+            return r, nil
+        }
+        if lexer.document[i] == '\\' {
+            i +=2
+        }
+    }
+    return "", errors.New("Can not find target byte.")
 }
 
 func (lexer *Lexer) scanNumber() string {

@@ -2,6 +2,7 @@
 package frontend
 
 import (
+	"fmt"
 )
 
 type QueryVariables map[string]interface{}
@@ -13,6 +14,8 @@ type QueryVariables map[string]interface{}
 // VariableValue  ::= IntValue | FloatValue | StringValue | BooleanValue | NullValue 
 
 func parseQueryVariables(lexer *Lexer) (QueryVariables, error) {
+    fmt.Printf("parseQueryVariables() -> lexer.document: %s\n", lexer.document)
+
 	queryVariables := make(QueryVariables)
 	// start with "{"
     lexer.NextTokenIs(TOKEN_LEFT_BRACE)
@@ -34,22 +37,22 @@ func parseQueryVariables(lexer *Lexer) (QueryVariables, error) {
 }
 
 func parseQueryVariable(lexer *Lexer) (string, interface{}, error) {
-	var name  StringValue
+	var name  string
 	var value interface{}
 	var err   error
 
 	// json field name "xxx"
-	if name, err = parseStringValue(lexer); err != nil {
-		return name.Value, value, err
+	if name, err = parseStringValueSimple(lexer); err != nil {
+		return name, value, err
 	}
 
 	// ":"
     lexer.NextTokenIs(TOKEN_COLON)
 
     // json value
-    if value, err = parseStringValue(lexer); err != nil {
-    	return name.Value, value, err
+    if value, err = parseValue(lexer); err != nil {
+    	return name, value, err
     }
 
-    return name.Value, value, nil
+    return name, value, nil
 }

@@ -30,6 +30,8 @@ func parseRequest(lexer *Lexer, request *graphql.Request) (error) {
 }
 
 func parseRequestField(lexer *Lexer, request *graphql.Request) (error) {
+    fmt.Printf("lexer.document: %s\n", lexer.document)
+
     var name string  
     var err  error
     // end with "}"
@@ -38,12 +40,12 @@ func parseRequestField(lexer *Lexer, request *graphql.Request) (error) {
         if name, err = parseStringValueSimple(lexer); err != nil {
             return err
         }
-        fmt.Printf("name: %s\n", name)
+        fmt.Printf("\nname: %s\n", name)
         // ":"
         lexer.NextTokenIs(TOKEN_COLON)
         // query
         if name == REQUEST_FIELD_QUERY {
-            fmt.Printf("%v", lexer.LookAhead())
+
             if request.Query, err = parseStringValueSimple(lexer); err != nil {
                 return err
             }

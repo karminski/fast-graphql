@@ -96,129 +96,25 @@ func parseStringValue(lexer *Lexer) (StringValue, error) {
 
 // output golang built-in string type value
 func parseStringValueSimple(lexer *Lexer) (string, error) {
+    var str string
+    var err error
     // quotes
-    if lexer.LookAhead() == TOKEN_HEXQUOTE {
-        lexer.NextTokenIs(TOKEN_HEXQUOTE)
-        return "", nil
-    }
     if lexer.LookAhead() == TOKEN_DUOQUOTE {
         lexer.NextTokenIs(TOKEN_DUOQUOTE)
         return "", nil
     }
-    if lexer.LookAhead() == TOKEN_TRIQUOTE {
-        lexer.NextTokenIs(TOKEN_TRIQUOTE)
-        str := lexer.scanBeforeToken(tokenNameMap[TOKEN_TRIQUOTE])
-        lexer.NextTokenIs(TOKEN_TRIQUOTE)
-        return str, nil
-    }
     if lexer.LookAhead() == TOKEN_QUOTE {
         lexer.NextTokenIs(TOKEN_QUOTE)
-        str := lexer.scanBeforeToken(tokenNameMap[TOKEN_QUOTE])
-        fmt.Printf(str)
+        quoteRune := []byte(tokenNameMap[TOKEN_QUOTE])
+        if str, err = lexer.scanBeforeByte(quoteRune[0]); err != nil {
+            return "", err
+        }
+        fmt.Printf("parseStringValueSimple str: %s\n", str)
         lexer.NextTokenIs(TOKEN_QUOTE)
         return str, nil
     }
-    err := "not a StringValue"
-    return "", errors.New(err)
-}
-
-
-// this method copy from https://github.com/zxh0/lua.go/blob/master/compiler/lexer/lexer.go
-// @copyright zxh0 (张秀宏)
-// @license MIT
-func (lexer *Lexer) escape(str string) string {
-    var buf bytes.Buffer
-
-    for len(str) > 0 {
-        if str[0] != '\\' {
-            buf.WriteByte(str[0])
-            str = str[1:]
-            continue
-        }
-
-        if len(str) == 1 {
-            lexer.error("unfinished string")
-        }
-
-        switch str[1] {
-        case 'a':
-            buf.WriteByte('\a')
-            str = str[2:]
-            continue
-        case 'b':
-            buf.WriteByte('\b')
-            str = str[2:]
-            continue
-        case 'f':
-            buf.WriteByte('\f')
-            str = str[2:]
-            continue
-        case 'n', '\n':
-            buf.WriteByte('\n')
-            str = str[2:]
-            continue
-        case 'r':
-            buf.WriteByte('\r')
-            str = str[2:]
-            continue
-        case 't':
-            buf.WriteByte('\t')
-            str = str[2:]
-            continue
-        case 'v':
-            buf.WriteByte('\v')
-            str = str[2:]
-            continue
-        case '"':
-            buf.WriteByte('"')
-            str = str[2:]
-            continue
-        case '\'':
-            buf.WriteByte('\'')
-            str = str[2:]
-            continue
-        case '\\':
-            buf.WriteByte('\\')
-            str = str[2:]
-            continue
-        case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9': // \ddd
-            if found := reDecEscapeSeq.FindString(str); found != "" {
-                d, _ := strconv.ParseInt(found[1:], 10, 32)
-                if d <= 0xFF {
-                    buf.WriteByte(byte(d))
-                    str = str[len(found):]
-                    continue
-                }
-                lexer.error("decimal escape too large near '%s'", found)
-            }
-        case 'x': // \xXX
-            if found := reHexEscapeSeq.FindString(str); found != "" {
-                d, _ := strconv.ParseInt(found[2:], 16, 32)
-                buf.WriteByte(byte(d))
-                str = str[len(found):]
-                continue
-            }
-        case 'u': // \u{XXX}
-            if found := reUnicodeEscapeSeq.FindString(str); found != "" {
-                d, err := strconv.ParseInt(found[3:len(found)-1], 16, 32)
-                if err == nil && d <= 0x10FFFF {
-                    buf.WriteRune(rune(d))
-                    str = str[len(found):]
-                    continue
-                }
-                lexer.error("UTF-8 value too large near '%s'", found)
-            }
-        case 'z':
-            str = str[2:]
-            for len(str) > 0 && isWhiteSpace(str[0]) { // todo
-                str = str[1:]
-            }
-            continue
-        }
-        lexer.error("invalid escape sequence near '\\%c'", str[1])
-    }
-
-    return buf.String()
+    err = errors.New("not a StringValue")
+    return "", err
 }
 
 
