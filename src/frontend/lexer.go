@@ -6,6 +6,8 @@ import (
     "strings"
     "regexp"
     "fmt"
+    "bytes"
+    "strconv"
     "errors"
 )
 
@@ -164,7 +166,10 @@ var avaliableNumberParts = map[byte]bool{
 }
 
 // regex match patterns
-var regexNumber     = regexp.MustCompile(`^0[xX][0-9a-fA-F]*(\.[0-9a-fA-F]*)?([pP][+\-]?[0-9]+)?|^[-]?[0-9]*(\.[0-9]*)?([eE][+\-]?[0-9]+)?`)
+var regexNumber        = regexp.MustCompile(`^0[xX][0-9a-fA-F]*(\.[0-9a-fA-F]*)?([pP][+\-]?[0-9]+)?|^[-]?[0-9]*(\.[0-9]*)?([eE][+\-]?[0-9]+)?`)
+var reDecEscapeSeq     = regexp.MustCompile(`^\\[0-9]{1,3}`)
+var reHexEscapeSeq     = regexp.MustCompile(`^\\x[0-9a-fA-F]{2}`)
+var reUnicodeEscapeSeq = regexp.MustCompile(`^\\u\{[0-9a-fA-F]+\}`)
 
 // lexer struct
 type Lexer struct {
@@ -234,32 +239,36 @@ func (lexer *Lexer) skipDocument(n int) {
     lexer.document = lexer.document[n:]
 }
 
+// target pattern
+func isNewLine(c byte) bool {
+    return c == '\r' || c == '\n'
+}
+
+func isWhiteSpace(c byte) bool {
+    switch c {
+    case '\t', '\n', '\v', '\f', '\r', ' ':
+        return true
+    }
+    return false
+}
+
+func isComma(c byte) bool {
+    switch c {
+    case ',':
+        return true
+    }
+    return false
+}
+
+func isComment(c byte) bool {
+    switch c {
+    case '#':
+        return true
+    }
+    return false
+}
+
 func (lexer *Lexer) skipIgnored() {
-    // target pattern
-    isNewLine := func(c byte) bool {
-        return c == '\r' || c == '\n'
-    }
-    isWhiteSpace := func(c byte) bool {
-        switch c {
-        case '\t', '\n', '\v', '\f', '\r', ' ':
-            return true
-        }
-        return false
-    }
-    isComma := func(c byte) bool {
-        switch c {
-        case ',':
-            return true
-        }
-        return false
-    }
-    isComment := func(c byte) bool {
-        switch c {
-        case '#':
-            return true
-        }
-        return false
-    }
     // matching
     for len(lexer.document) > 0 {
         if lexer.nextDocumentIs("\r\n") || lexer.nextDocumentIs("\n\r") {
@@ -308,14 +317,20 @@ func (lexer *Lexer) scanBeforeToken(token string) string {
 func (lexer *Lexer) scanBeforeByte(b byte) (string, error) {
     docLen    := len(lexer.document)
     var r string
+    var err error
     i := 0
     for ; i < docLen; i++ {
+        // hit target
         if lexer.document[i] == b {
-            // hit target
             r = lexer.document[:i]
+            // convert escape character
+            if r, err = lexer.escape(r); err != nil {
+                return "", err
+            }
             lexer.skipDocument(i)
             return r, nil
         }
+        // skip escape character
         if lexer.document[i] == '\\' {
             i +=2
         }
@@ -470,5 +485,100 @@ func (lexer *Lexer) MatchToken() (lineNum int, tokenType int, token string) {
     return 
 }
 
+// this escape method copy from https://github.com/zxh0/lua.go/blob/master/compiler/lexer/lexer.go
+// @copyright zxh0
+// @license MIT
+func (lexer *Lexer) escape(str string) (string, error) {
+    var buf bytes.Buffer
 
+    for len(str) > 0 {
+        if str[0] != '\\' {
+            buf.WriteByte(str[0])
+            str = str[1:]
+            continue
+        }
 
+        if len(str) == 1 {
+            return "", errors.New("unfinished string")
+        }
+
+        switch str[1] {
+        case 'a':
+            buf.WriteByte('\a')
+            str = str[2:]
+            continue
+        case 'b':
+            buf.WriteByte('\b')
+            str = str[2:]
+            continue
+        case 'f':
+            buf.WriteByte('\f')
+            str = str[2:]
+            continue
+        case 'n', '\n':
+            buf.WriteByte('\n')
+            str = str[2:]
+            continue
+        case 'r':
+            buf.WriteByte('\r')
+            str = str[2:]
+            continue
+        case 't':
+            buf.WriteByte('\t')
+            str = str[2:]
+            continue
+        case 'v':
+            buf.WriteByte('\v')
+            str = str[2:]
+            continue
+        case '"':
+            buf.WriteByte('"')
+            str = str[2:]
+            continue
+        case '\'':
+            buf.WriteByte('\'')
+            str = str[2:]
+            continue
+        case '\\':
+            buf.WriteByte('\\')
+            str = str[2:]
+            continue
+        case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9': // \ddd
+            if found := reDecEscapeSeq.FindString(str); found != "" {
+                d, _ := strconv.ParseInt(found[1:], 10, 32)
+                if d <= 0xFF {
+                    buf.WriteByte(byte(d))
+                    str = str[len(found):]
+                    continue
+                }
+                return "", errors.New(fmt.Sprintf("decimal escape too large near '%s'", found))
+            }
+        case 'x': // \xXX
+            if found := reHexEscapeSeq.FindString(str); found != "" {
+                d, _ := strconv.ParseInt(found[2:], 16, 32)
+                buf.WriteByte(byte(d))
+                str = str[len(found):]
+                continue
+            }
+        case 'u': // \u{XXX}
+            if found := reUnicodeEscapeSeq.FindString(str); found != "" {
+                d, err := strconv.ParseInt(found[3:len(found)-1], 16, 32)
+                if err == nil && d <= 0x10FFFF {
+                    buf.WriteRune(rune(d))
+                    str = str[len(found):]
+                    continue
+                }
+                return "", errors.New(fmt.Sprintf("UTF-8 value too large near '%s'", found))
+            }
+        case 'z':
+            str = str[2:]
+            for len(str) > 0 && isWhiteSpace(str[0]) { // todo
+                str = str[1:]
+            }
+            continue
+        }
+        return "", errors.New(fmt.Sprintf("invalid escape sequence near '\\%c'", str[1]))
+    }
+
+    return buf.String(), nil
+}

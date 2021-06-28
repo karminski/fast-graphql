@@ -7,6 +7,7 @@ import (
     "fast-graphql/src/graphql"
 
     "github.com/davecgh/go-spew/spew"
+    "fmt"
 
 )
 
@@ -21,6 +22,7 @@ func Compile(requestStr string, request *graphql.Request) (*Document, error) {
     }
 
     spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+    fmt.Printf("------------------------------\n")
     spewo.Dump(requestStr)
     spewo.Dump(request)
 
@@ -54,9 +56,10 @@ func Compile(requestStr string, request *graphql.Request) (*Document, error) {
 
 // init request object, parse request string to request object, see (./DOCUMENTS/Request-Parser.md)
 func initRequestObject(requestStr string, request *graphql.Request) (error) {
+    var err error
     // parse request
     lexer := NewLexer(requestStr)
-    if err := parseRequest(lexer, request); err != nil {
+    if err = parseRequest(lexer, request); err != nil {
         return err
     }
     // get query hash
