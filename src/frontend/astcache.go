@@ -12,7 +12,8 @@ import (
 var astCache sync.Map // map[queryHash]Document
 
 func loadAST(request *graphql.Request) (Document, bool)  {
-	if doc, ok := astCache.Load(request.QueryHash); ok {
+	hash := request.GetQueryHash()
+	if doc, ok := astCache.Load(hash); ok {
 		return doc.(Document), true
 	}
 	var doc Document 
@@ -21,7 +22,8 @@ func loadAST(request *graphql.Request) (Document, bool)  {
 
 
 func saveAST(request *graphql.Request, doc Document) {
-	astCache.Store(request.QueryHash, doc)
+	hash := request.GetQueryHash()
+	astCache.Store(hash, doc)
 }
 
 

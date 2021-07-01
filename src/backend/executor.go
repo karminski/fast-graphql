@@ -14,12 +14,10 @@ import (
 
     // "strconv"
     // "os"
-    // "github.com/davecgh/go-spew/spew"
+    "github.com/davecgh/go-spew/spew"
 
 
 )
-
-const DUMP_FRONTEND = false
 
 
 
@@ -106,13 +104,12 @@ func Execute(requestStr string, schema Schema) (string) {
         return "error"
     }
 
-    g.queryHash = request.QueryHash
+    g.queryHash = request.GetQueryHash()
 
-    // if DUMP_FRONTEND {
-    //     spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-    //     spewo.Dump(document)
-    //     os.Exit(1)
-    // }
+    if true {
+        spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+        spewo.Dump(document)
+    }
 
     // @todo: THE DOCUMENT NEED VALIDATE!
     
@@ -143,26 +140,28 @@ func Execute(requestStr string, schema Schema) (string) {
     }
     
     // execute cache
-    if ENABLE_BACKEND_CACHE {
-        // check if cached
-        cssHash := GetSelectionSetHash(g.queryHash, "data") // first selectionSet named "data"
-        // resolve by cached data   
-        if css, ok :=loadSelectionSet(cssHash); ok {
-            var err          error
-            if _, err = resolveCachedSelectionSet(g, request, selectionSet, objectFields, nil, css); err != nil {
-                return "error"
-            }
-            // stringify
-            g.Stringifier.buildNoError()
-            stringifiedData := g.Stringifier.Stringify()
-            return stringifiedData 
-        }
-    }
+    //if ENABLE_BACKEND_CACHE {
+    //    // check if cached
+    //    cssHash := GetSelectionSetHash(g.queryHash, "data") // first selectionSet named "data"
+    //    // resolve by cached data   
+    //    if css, ok :=loadSelectionSet(cssHash); ok {
+    //        var err          error
+    //        if _, err = resolveCachedSelectionSet(g, request, selectionSet, objectFields, nil, css); err != nil {
+    //            return "resolveCachedSelectionSet() error"
+    //        }
+    //        // stringify
+    //        g.Stringifier.buildNoError()
+    //        stringifiedData := g.Stringifier.Stringify()
+    //        return stringifiedData 
+    //    }
+    //}
 
     // execute
     var resolvedResult interface{}
     if resolvedResult, err = resolveSelectionSet(g, request, selectionSet, objectFields, nil); err != nil {
-        return "error"
+        spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+        spewo.Dump(err)
+        return "resolveSelectionSet() error"
     }
     
     if false {
@@ -317,6 +316,9 @@ func correctJsonUnmarshalIntValue(value interface{}, variableType frontend.Type)
 func getQueryVariablesMap(request *graphql.Request, variableDefinitions []*frontend.VariableDefinition) (map[string]interface{}, error) {
     var err error
     queryVariablesInRequest := request.GetQueryVariables()
+    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+            spewo.Dump(queryVariablesInRequest)
+            spewo.Dump(variableDefinitions)
     queryVariablesMap       := make(map[string]interface{}, len(variableDefinitions))
     
     for _, variableDefinition := range variableDefinitions {
@@ -353,6 +355,7 @@ func getQueryVariablesMap(request *graphql.Request, variableDefinitions []*front
 
 // build Field.Arguments map from GlobalVariables.QueryVariablesMap
 func getFieldArgumentsMap(g *GlobalVariables, arguments []*frontend.Argument, cf *cachedField) (map[string]interface{}, error) {
+    var err error
     fieldArgumentsMap := make(map[string]interface{}, len(arguments))
     
     for _, argument := range arguments {
@@ -362,38 +365,31 @@ func getFieldArgumentsMap(g *GlobalVariables, arguments []*frontend.Argument, cf
         // assert Argument.Value type
         if _, ok := argumentValue.(frontend.Variable); ok {
             // Variable type, resolve referenced value from GlobalVariables.QueryVariablesMap
+            spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
+            spewo.Dump(g.QueryVariablesMap)
             if matched, ok := g.QueryVariablesMap[argumentName]; ok {
-                fieldArgumentsMap[argumentName] = matched
+                fmt.Printf("1\n")
+                if fieldArgumentsMap[argumentName], err = frontend.AssertArgumentType(matched); err != nil {
+                    return nil, err
+                }
             } else {
                 err := "getFieldArgumentsMap(): Field.Arguments referenced variable $"+argumentName+", but it was NOT defined at OperationDefinition.VariableDefinitions, please check your GraphQL OperationDefinition syntax."
                 return nil, errors.New(err)
             }
-        } else if val, ok := argumentValue.(frontend.IntValue); ok {
-            fieldArgumentsMap[argumentName] = val.Value
-        } else if val, ok := argumentValue.(frontend.FloatValue); ok {
-            fieldArgumentsMap[argumentName] = val.Value
-        } else if val, ok := argumentValue.(frontend.StringValue); ok {
-            fieldArgumentsMap[argumentName] = val.Value
-        } else if val, ok := argumentValue.(frontend.BooleanValue); ok {
-            fieldArgumentsMap[argumentName] = val.Value
-        } else if val, ok := argumentValue.(frontend.NullValue); ok {
-            fieldArgumentsMap[argumentName] = val.Value
-        } else if val, ok := argumentValue.(frontend.EnumValue); ok {
-            fieldArgumentsMap[argumentName] = val.Value
-        } else if val, ok := argumentValue.(frontend.ListValue); ok {
-            fieldArgumentsMap[argumentName] = val.Value
-        } else if val, ok := argumentValue.(frontend.ObjectValue); ok {
-            fieldArgumentsMap[argumentName] = val.Value
         } else {
-            err := "getFieldArgumentsMap(): Field.Arguments.Argument type assert failed, please check your GraphQL Field.Arguments.Argument syntax."
-            return nil, errors.New(err)
-        }
+            fmt.Printf("2\n")
+
+            if fieldArgumentsMap[argumentName], err = frontend.AssertArgumentType(argumentValue); err != nil {
+                return nil, err
+            }
+        } 
         // fill field cache
         cf.Arguments[argumentName] = nil
     }
-    
     return fieldArgumentsMap, nil
 }
+
+
 
 func checkIfInputArgumentsAvaliable(inputArguments map[string]interface{}, targetObjectFieldArguments *Arguments) (bool, error) {
     for argumentName, _ := range inputArguments {

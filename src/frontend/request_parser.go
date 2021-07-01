@@ -45,7 +45,6 @@ func parseRequestField(lexer *Lexer, request *graphql.Request) (error) {
         lexer.NextTokenIs(TOKEN_COLON)
         // query
         if name == REQUEST_FIELD_QUERY {
-
             if request.Query, err = parseStringValueSimple(lexer); err != nil {
                 return err
             }

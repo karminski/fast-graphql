@@ -4,10 +4,9 @@ package frontend
 
 import (
     "fast-graphql/src/graphql"
-    "errors"
     "fmt"
     "bytes"
-
+    "errors"
 )
 
 // arguments substitution
@@ -27,7 +26,11 @@ type VariableScanner struct {
 
 
 // ContextWithArguments Expression 
-// ContextWithArguments ::= Ignored TargetArguments+ Ignored
+// ContextWithArguments ::= Ignored OperationType Ignored OperationName Ignored TargetArguments+ Ignored
+// 
+// Type & Name Expression
+// OperationType       ::= "query" | "mutation" | "subscription" 
+// OperationName       ::= Name 
 // 
 // TargetArguments Expression 
 // TargetArguments      ::= "(" Ignored Argument+ | VariableDefinition+ Ignored ")" Ignored
@@ -38,8 +41,16 @@ type VariableScanner struct {
 
 
 type ContextWithArguments struct {
-    LastLineNum       int
-    TargetArguments   []*TargetArguments 
+    LastLineNum               int
+    VariableDefinitionsPos    int
+    TargetArguments        []*TargetArguments 
+}
+
+func (ctx *ContextWithArguments)IsTargetArgumentsAvaliable() bool {
+    if len(ctx.TargetArguments) != 0 {
+        return true
+    }
+    return false
 }
 
 type TargetArguments struct {
@@ -61,6 +72,18 @@ func ScanArguments(request *graphql.Request) (*ContextWithArguments, error) {
 
     // parse
     lexer := NewLexer(request.Query)
+    // skip OperationType & OperationName 
+    parseOperationType(lexer)
+    parseName(lexer)
+
+    // request does not provide query variables, but variable definitions express detected, 
+    // may be syntax error, stop arguments scanner, return to normal parse prhase.
+    if lexer.LookAhead() == TOKEN_LEFT_PAREN {
+        err = errors.New("ScanArguments(): request does not provide query variables, but variable definitions express detected.") 
+        return nil, err
+    }
+    
+    // parse left part
     if ctx, err = parseContextWithArguments(lexer); err != nil {
         return nil, err
     }
@@ -75,6 +98,7 @@ func parseContextWithArguments(lexer *Lexer) (*ContextWithArguments, error) {
 
     // LastLineNum
     ctx.LastLineNum = lexer.GetLineNum()
+    ctx.VariableDefinitionsPos = lexer.GetPos()
 
     // parse TargetArguments
     
@@ -149,28 +173,9 @@ func parseTargetArgument(lexer *Lexer) (*TargetArgument, error) {
 
 func GenerateRequestVariables(request *graphql.Request, ctx *ContextWithArguments) error {
     request.InitSubstitutedVariables()
-    for _, ta := range ctx.TargetArguments {
-        for _, a := range ta.Arguments {
-            if val, ok := a.Value.(IntValue); ok {
-                request.SubstitutedVariables[a.Name.Value] = val.Value
-            } else if val, ok := a.Value.(FloatValue); ok {
-                request.SubstitutedVariables[a.Name.Value] = val.Value
-            } else if val, ok := a.Value.(StringValue); ok {
-                request.SubstitutedVariables[a.Name.Value] = val.Value
-            } else if val, ok := a.Value.(BooleanValue); ok {
-                request.SubstitutedVariables[a.Name.Value] = val.Value
-            } else if val, ok := a.Value.(NullValue); ok {
-                request.SubstitutedVariables[a.Name.Value] = val.Value
-            } else if val, ok := a.Value.(EnumValue); ok {
-                request.SubstitutedVariables[a.Name.Value] = val.Value
-            } else if val, ok := a.Value.(ListValue); ok {
-                request.SubstitutedVariables[a.Name.Value] = val.Value
-            } else if val, ok := a.Value.(ObjectValue); ok {
-                request.SubstitutedVariables[a.Name.Value] = val.Value
-            } else {
-                err := "generateRequestVariables(): ContextWithArguments.TargetArguments.Arguments type assert failed, please check your GraphQL Arguments syntax."
-                return errors.New(err)
-            }
+    for _, targ := range ctx.TargetArguments {
+        for _, arg := range targ.Arguments {
+            request.SubstitutedVariables[arg.Name.Value] = arg.Value
         }
     }
     return nil
@@ -178,23 +183,38 @@ func GenerateRequestVariables(request *graphql.Request, ctx *ContextWithArgument
 
 
 func ArgumentsSubstitution(request *graphql.Request, ctx *ContextWithArguments) {
-    var buffer bytes.Buffer
+    var buffer                    bytes.Buffer
+    var argumentsBuffer           bytes.Buffer
+    var variableDefinitionsBuffer bytes.Buffer
     lastPos := 0
-    for _, tas := range ctx.TargetArguments {
-        for _, ta := range tas.Arguments {
+    // concat
+    variableDefinitionsBuffer.WriteString("(")
+    for _, targs := range ctx.TargetArguments {
+        for _, targ := range targs.Arguments {
             if lastPos == 0 {
-                buffer.WriteString(request.Query[:ta.ValueStartPos])
+                argumentsBuffer.WriteString(request.Query[:targ.ValueStartPos])
             } else {
-                buffer.WriteString(request.Query[lastPos:ta.ValueStartPos])
+                argumentsBuffer.WriteString(request.Query[lastPos:targ.ValueStartPos])
             }
-            buffer.WriteString("$")
-            buffer.WriteString(ta.Name.Value)
-            lastPos = ta.ValueEndPos
+            argumentsBuffer.WriteString("$")
+            argumentsBuffer.WriteString(targ.Name.Value)
+            variableDefinitionsBuffer.WriteString("$")
+            variableDefinitionsBuffer.WriteString(targ.Name.Value)
+            variableDefinitionsBuffer.WriteString(":")
+            variableDefinitionsBuffer.WriteString(targ.Name.Value)
+            variableDefinitionsBuffer.WriteString(",")
+            lastPos = targ.ValueEndPos
         }
     }
+    variableDefinitionsBuffer.WriteString(")")
     // write back to query
-    buffer.WriteString(request.Query[lastPos:])
+    argumentsBuffer.WriteString(request.Query[lastPos:])
+    request.SubstitutedQuery = argumentsBuffer.String()
+    buffer.WriteString(request.SubstitutedQuery[:ctx.VariableDefinitionsPos])
+    buffer.WriteString(variableDefinitionsBuffer.String())
+    buffer.WriteString(request.SubstitutedQuery[ctx.VariableDefinitionsPos:])
     request.SubstitutedQuery = buffer.String()
     request.GenerateSubstitutedQueryHash()
 }
+
 

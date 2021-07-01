@@ -52,3 +52,19 @@ func (r *Request)GetQueryVariables() (map[string]interface{}) {
 	}
 	return r.Variables
 }
+
+func (r *Request)GetQueryHash() ([16]byte) {
+    var emptyHash [16]byte  
+    if r.SubstitutedQueryHash != emptyHash {
+        return r.SubstitutedQueryHash
+    }
+    return r.QueryHash
+}
+
+
+func (r *Request)IsVariablesAvaliable() bool {
+    if len(r.Variables) == 0 {
+        return false
+    }
+    return true
+}
