@@ -4,7 +4,6 @@ package frontend
 
 import (
     "fast-graphql/src/graphql"
-    "fmt"
     "bytes"
     "errors"
 )
@@ -67,14 +66,17 @@ type TargetArgument struct {
 
 
 func ScanArguments(request *graphql.Request) (*ContextWithArguments, error) {
-    var ctx  *ContextWithArguments
-    var err   error
+    var ctx ContextWithArguments
+    var err error
 
     // parse
     lexer := NewLexer(request.Query)
     // skip OperationType & OperationName 
     parseOperationType(lexer)
-    parseName(lexer)
+    parseName(lexer) 
+
+    // pin variable definition position
+    ctx.VariableDefinitionsPos = lexer.GetPos()
 
     // request does not provide query variables, but variable definitions express detected, 
     // may be syntax error, stop arguments scanner, return to normal parse prhase.
@@ -84,27 +86,23 @@ func ScanArguments(request *graphql.Request) (*ContextWithArguments, error) {
     }
     
     // parse left part
-    if ctx, err = parseContextWithArguments(lexer); err != nil {
+    if err = parseContextWithArguments(lexer, &ctx); err != nil {
         return nil, err
     }
 
-    return ctx, nil
+    return &ctx, nil
 }
 
 
-func parseContextWithArguments(lexer *Lexer) (*ContextWithArguments, error) {
-    var ctx ContextWithArguments
+func parseContextWithArguments(lexer *Lexer, ctx *ContextWithArguments) error {
     var err error
 
     // LastLineNum
     ctx.LastLineNum = lexer.GetLineNum()
-    ctx.VariableDefinitionsPos = lexer.GetPos()
-
-    // parse TargetArguments
     
+    // parse TargetArguments
     for {
         nextToken := lexer.LookAhead()
-        fmt.Printf("n: %d\n", nextToken)
         // end
         if isDocumentEnd(nextToken) {
             break
@@ -117,12 +115,12 @@ func parseContextWithArguments(lexer *Lexer) (*ContextWithArguments, error) {
         // got "(", start parse target arguments
         var TargetArguments *TargetArguments
         if TargetArguments, err = parseTargetArguments(lexer); err != nil {
-            return nil, err
+            return err
         }
 
         ctx.TargetArguments = append(ctx.TargetArguments, TargetArguments)
     }   
-    return &ctx, nil
+    return nil
 }
 
 

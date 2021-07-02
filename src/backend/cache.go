@@ -218,7 +218,9 @@ func cachedSchemaResolveFunction(g *GlobalVariables, request *graphql.Request, r
     resolveParams.Source = resolvedData
     resolveParams.Arguments = make(map[string]interface{}, len(cf.Arguments))
     for arg, _ := range cf.Arguments {
-    	resolveParams.Arguments[arg] = g.QueryVariablesMap[arg]
+    	if resolveParams.Arguments[arg], err = frontend.AssertArgumentType(g.QueryVariablesMap[arg]); err != nil {
+    		return nil, err
+    	}
     }
 
     // resolve

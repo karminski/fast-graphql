@@ -61,6 +61,13 @@ func (r *Request)GetQueryHash() ([16]byte) {
     return r.QueryHash
 }
 
+func (r *Request)GetAvaliableQuery() string {
+    if len(r.SubstitutedQuery) != 0 {
+        return r.SubstitutedQuery
+    }
+    return r.Query
+}
+
 
 func (r *Request)IsVariablesAvaliable() bool {
     if len(r.Variables) == 0 {

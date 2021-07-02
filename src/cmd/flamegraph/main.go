@@ -11,9 +11,9 @@ import (
     "strconv"
     "io"
     _ "net/http/pprof"
-    "fmt"
+    // "fmt"
     // "os"
-    "github.com/davecgh/go-spew/spew"
+    // "github.com/davecgh/go-spew/spew"
 
 )
 
@@ -259,9 +259,6 @@ var queryObject, _ = backend.NewObject(
                     },
                 },
                 ResolveFunction: func(p backend.ResolveParams) (interface{}, error) {
-                    fmt.Printf("-------------------\n")
-                    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-                    spewo.Dump(p.Arguments["Id"])
                     id, ok := p.Arguments["Id"].(int)
 
                     if ok {

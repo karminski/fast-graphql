@@ -106,9 +106,10 @@ func Execute(requestStr string, schema Schema) (string) {
 
     g.queryHash = request.GetQueryHash()
 
-    if true {
+    if false {
         spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
         spewo.Dump(document)
+        spewo.Dump(g.queryHash)
     }
 
     // @todo: THE DOCUMENT NEED VALIDATE!
@@ -140,27 +141,25 @@ func Execute(requestStr string, schema Schema) (string) {
     }
     
     // execute cache
-    //if ENABLE_BACKEND_CACHE {
-    //    // check if cached
-    //    cssHash := GetSelectionSetHash(g.queryHash, "data") // first selectionSet named "data"
-    //    // resolve by cached data   
-    //    if css, ok :=loadSelectionSet(cssHash); ok {
-    //        var err          error
-    //        if _, err = resolveCachedSelectionSet(g, request, selectionSet, objectFields, nil, css); err != nil {
-    //            return "resolveCachedSelectionSet() error"
-    //        }
-    //        // stringify
-    //        g.Stringifier.buildNoError()
-    //        stringifiedData := g.Stringifier.Stringify()
-    //        return stringifiedData 
-    //    }
-    //}
+    if ENABLE_BACKEND_CACHE {
+        // check if cached
+        cssHash := GetSelectionSetHash(g.queryHash, "data") // first selectionSet named "data"
+        // resolve by cached data   
+        if css, ok :=loadSelectionSet(cssHash); ok {
+            var err          error
+            if _, err = resolveCachedSelectionSet(g, request, selectionSet, objectFields, nil, css); err != nil {
+                return "resolveCachedSelectionSet() error"
+            }
+            // stringify
+            g.Stringifier.buildNoError()
+            stringifiedData := g.Stringifier.Stringify()
+            return stringifiedData 
+        }
+    }
 
     // execute
     var resolvedResult interface{}
     if resolvedResult, err = resolveSelectionSet(g, request, selectionSet, objectFields, nil); err != nil {
-        spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-        spewo.Dump(err)
         return "resolveSelectionSet() error"
     }
     
@@ -316,9 +315,6 @@ func correctJsonUnmarshalIntValue(value interface{}, variableType frontend.Type)
 func getQueryVariablesMap(request *graphql.Request, variableDefinitions []*frontend.VariableDefinition) (map[string]interface{}, error) {
     var err error
     queryVariablesInRequest := request.GetQueryVariables()
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-            spewo.Dump(queryVariablesInRequest)
-            spewo.Dump(variableDefinitions)
     queryVariablesMap       := make(map[string]interface{}, len(variableDefinitions))
     
     for _, variableDefinition := range variableDefinitions {
@@ -326,13 +322,7 @@ func getQueryVariablesMap(request *graphql.Request, variableDefinitions []*front
         variableName := variableDefinition.Variable.Value
         variableType := variableDefinition.Type
         if matchedValue, ok := queryVariablesInRequest[variableName]; ok {
-            // convert float64 to int type for json.Unmarshal
-            // @TODO: remove this method by Query-Variables-Lexer-and-Parser
-            if intValue, err := correctJsonUnmarshalIntValue(matchedValue, variableType); err == nil {
-                queryVariablesMap[variableName] = intValue
-            } else{
-                queryVariablesMap[variableName] = matchedValue
-            }
+            queryVariablesMap[variableName] = matchedValue
         // check NonNullType
         } else if _, ok := variableType.(frontend.NonNullType); ok {
             typeStr := ""
@@ -365,10 +355,7 @@ func getFieldArgumentsMap(g *GlobalVariables, arguments []*frontend.Argument, cf
         // assert Argument.Value type
         if _, ok := argumentValue.(frontend.Variable); ok {
             // Variable type, resolve referenced value from GlobalVariables.QueryVariablesMap
-            spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-            spewo.Dump(g.QueryVariablesMap)
             if matched, ok := g.QueryVariablesMap[argumentName]; ok {
-                fmt.Printf("1\n")
                 if fieldArgumentsMap[argumentName], err = frontend.AssertArgumentType(matched); err != nil {
                     return nil, err
                 }
@@ -377,8 +364,6 @@ func getFieldArgumentsMap(g *GlobalVariables, arguments []*frontend.Argument, cf
                 return nil, errors.New(err)
             }
         } else {
-            fmt.Printf("2\n")
-
             if fieldArgumentsMap[argumentName], err = frontend.AssertArgumentType(argumentValue); err != nil {
                 return nil, err
             }

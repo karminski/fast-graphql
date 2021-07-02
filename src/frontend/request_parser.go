@@ -3,8 +3,6 @@ package frontend
 
 import (
     "fast-graphql/src/graphql"
-
-    "fmt"
 )
 
 const REQUEST_FIELD_QUERY          = "query"
@@ -30,8 +28,6 @@ func parseRequest(lexer *Lexer, request *graphql.Request) (error) {
 }
 
 func parseRequestField(lexer *Lexer, request *graphql.Request) (error) {
-    fmt.Printf("lexer.document: %s\n", lexer.document)
-
     var name string  
     var err  error
     // end with "}"
@@ -40,7 +36,6 @@ func parseRequestField(lexer *Lexer, request *graphql.Request) (error) {
         if name, err = parseStringValueSimple(lexer); err != nil {
             return err
         }
-        fmt.Printf("\nname: %s\n", name)
         // ":"
         lexer.NextTokenIs(TOKEN_COLON)
         // query

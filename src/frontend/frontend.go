@@ -6,8 +6,6 @@ package frontend
 import (
     "fast-graphql/src/graphql"
 
-    "github.com/davecgh/go-spew/spew"
-    "fmt"
     "errors"
 
 )
@@ -22,23 +20,16 @@ func Compile(requestStr string, request *graphql.Request) (*Document, error) {
         return nil, err
     }
 
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-    fmt.Printf("------------------------------\n")
-    spewo.Dump(requestStr)
-    spewo.Dump(request)
-
     // run variables scanner & arguments substitution 
     runSubstitution(request)
 
 	// check if AST already cached
 	if cachedDoc, ok := loadAST(request); ok {
-        fmt.Printf("AST CACHE HIT!!!!!\n")
 		return &cachedDoc, nil
 	}
 
-	// cache miss, parse
+	// cache miss, parse     
     if document, err = parseQuery(request); err != nil {
-        spewo.Dump(err)
         return nil, err
     }
     
@@ -67,16 +58,7 @@ func parseQuery(request *graphql.Request) (*Document, error) {
     var query     string
     var err       error
 
-    // substituted or not
-    if request.IsVariablesAvaliable() {
-        query = request.Query
-    } else {
-        query = request.SubstitutedQuery
-    }
-
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-    fmt.Printf("parseQuery(): \n")
-    spewo.Dump(query)
+    query = request.GetAvaliableQuery()
 
     // parse
     lexer := NewLexer(query)
@@ -95,7 +77,7 @@ func runSubstitution(request *graphql.Request) {
     var err error
     if !request.IsVariablesAvaliable() {
         var ctx *ContextWithArguments
-        if ctx, err = ScanArguments(request); err != nil {
+        if ctx, err = ScanArguments(request); err != nil {   
             return 
         }
         if ctx.IsTargetArgumentsAvaliable() {
@@ -103,12 +85,10 @@ func runSubstitution(request *graphql.Request) {
             ArgumentsSubstitution(request, ctx)
         }
     }
+
 }
 
 func AssertArgumentType(arg interface{}) (interface{}, error) {
-    spewo := spew.ConfigState{ Indent: "    ", DisablePointerAddresses: true}
-    fmt.Printf("AssertArgumentType(): \n")
-    spewo.Dump(arg)
     if val, ok := arg.(IntValue); ok {
         return val.Value, nil
     } else if val, ok := arg.(FloatValue); ok {

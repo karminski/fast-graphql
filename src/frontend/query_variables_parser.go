@@ -2,7 +2,7 @@
 package frontend
 
 import (
-	"fmt"
+
 )
 
 type QueryVariables map[string]interface{}
@@ -14,8 +14,6 @@ type QueryVariables map[string]interface{}
 // VariableValue  ::= IntValue | FloatValue | StringValue | BooleanValue | NullValue 
 
 func parseQueryVariables(lexer *Lexer) (QueryVariables, error) {
-    fmt.Printf("parseQueryVariables() -> lexer.document: %s\n", lexer.document)
-
 	queryVariables := make(QueryVariables)
 	// start with "{"
     lexer.NextTokenIs(TOKEN_LEFT_BRACE)

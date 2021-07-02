@@ -109,7 +109,6 @@ func parseStringValueSimple(lexer *Lexer) (string, error) {
         if str, err = lexer.scanBeforeByte(quoteRune[0]); err != nil {
             return "", err
         }
-        fmt.Printf("parseStringValueSimple str: %s\n", str)
         lexer.NextTokenIs(TOKEN_QUOTE)
         return str, nil
     }
@@ -1489,8 +1488,6 @@ func parseEnumTypeDefinition(lexer *Lexer) (*EnumTypeDefinition, error) {
 }
 
 func parseEnumValuesDefinition(lexer *Lexer) ([]*EnumValueDefinition, error) {
-    fmt.Printf("\033[31m[INTO] func parseEnumValuesDefinition  \033[0m\n")
-
     var enumValuesDefinition []*EnumValueDefinition
 
     // "{"
@@ -1593,8 +1590,6 @@ func parseInputObjectTypeDefinition(lexer *Lexer) (*InputObjectTypeDefinition, e
 }
 
 func parseInputFieldsDefinition(lexer *Lexer) ([]*InputValueDefinition, error) {
-    fmt.Printf("\033[31m[INTO] func parseInputFieldsDefinition  \033[0m\n")
-
     var inputFieldsDefinition []*InputValueDefinition
 
     // "{"
