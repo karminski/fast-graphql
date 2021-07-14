@@ -12,7 +12,7 @@ For now, we will try GraphQL JIT, Cache Optimize runtime, Raw-ASM Parser, and SI
 
 WARNING: this repo is under construction, not production-ready.  
 
-# 性能
+# Performance
 
 In a typical 0.2 KB GraphQL request test ([1](./DOCUMENTS/benchmark-example-request-with-builtin-variables.graphql), [2](./DOCUMENTS/benchmark-example-request-with-query-variables.graphql)), the performance comparison between fast-graphql and other GraphQL implementations is as follows:  
 
@@ -64,9 +64,9 @@ This means that better performance can be achieved when using other HTTP librari
 
 # Documents
 
-- [现存问题](./DOCUMENTS/Issues/)
-- [事项列表](./DOCUMENTS/TODO-List.md)
-- [想法和优化方案](./DOCUMENTS/Ideas.md)
+- [Issues](./DOCUMENTS/Issues/)
+- [TODO-List](./DOCUMENTS/TODO-List.md)
+- [Ideas](./DOCUMENTS/Ideas.md)
 
 # Dependency
 
