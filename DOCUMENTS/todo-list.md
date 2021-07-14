@@ -1,6 +1,48 @@
 todo-list.md
 ------------
 
+# GraphQL Feature
+
+- Queries and Mutations
+  - Fields ✔️
+  - Arguments ✔️
+  - Aliases
+  - Fragments
+    - Using variables inside fragments
+  - Operation name ✔️
+  - Variables ✔️
+    - Variable definitions ✔️
+    - Default variables ✔️
+  - Directives 
+  - Mutations ✔️
+    - Multiple fields in mutations
+  - Inline Fragments
+    - Meta fields
+- Schemas and Types
+  - Type system ✔️
+  - Type language
+  - Object types and fields
+  - Arguments
+  - The Query and Mutation types
+  - Scalar types
+  - Enumeration types
+  - Lists and Non-Null
+  - Interfaces
+  - Union types
+  - Input types
+- Validation
+- Execution
+  - Root fields & resolvers
+  - Asynchronous resolvers
+  - Trivial resolvers
+  - Scalar coercion
+  - List resolvers
+  - Producing the result
+- Introspection
+  
+
+
+
 - 利用 c2goasm, 验证 C -> ASM -> GOASM + go-sourcecode -> bin 的构建流程 [Check]
 - GraphQL 的 BNF 或 EBNF 定义 [Check]
 - 编写一个只含有一种 scalar 的 query 的前端 [Check]

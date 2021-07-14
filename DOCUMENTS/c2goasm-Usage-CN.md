@@ -3,7 +3,7 @@ c2goasm-usage.md
 
 - @name       c2goasm-usage
 - @author     karminski <code.karminski@outlook.com>
-- @version    200414:1
+- @version    20200414:1
 
 
 # Description

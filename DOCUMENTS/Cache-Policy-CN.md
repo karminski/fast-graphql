@@ -21,3 +21,20 @@ Cache-Policy-CN.md
 - 当然, 在参数替换失败的情况, 会退回使用原始数据进行解析.
 
 # Backend
+
+后端缓存策略的核心目标是降低分支判断, 缓存目标 AST 对应的后端逻辑.
+
+数据结构为:
+
+```go
+type cachedField struct {
+	Name 		    string
+	Type 		    int
+	Arguments 		map[string]interface{}
+	StringifyFunc   StringifyFunc
+	ResolveFunction ResolveFunction
+}
+```
+
+该结构将在第一次执行目标 AST 时缓存 Field 对应的序列化方法 (StringifyFunc) 和解析方法 (ResolveFunction). 
+当接下来执行相同目标 AST 时, 直接执行相关方法, 从而避免了分支判断逻辑.  
